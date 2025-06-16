@@ -2,14 +2,15 @@ import pandas as pd
 from tqdm import tqdm  
 tqdm.pandas()
 
+# Load raw ticket data
 df = pd.read_csv('data/customer_support_tickets.csv')
 
+# Optional: initial inspection
 # print(df.info())
 # print(df.head())
 # print(df.describe())
 
-
-#removed stuff that was going to be unique and non redundant most of the time
+# Keep only relevant columns
 relevant_columns = [
     "Ticket ID",
     "Product Purchased",
@@ -21,39 +22,65 @@ relevant_columns = [
     "Ticket Status"
 ]
 
-
-#filter columns to contain only relevant columns and remove different ones
 df = df[relevant_columns]
 
-#filter nan columns
-df.dropna(subset=["Ticket Subject", "Ticket Description"], inplace=True) #from testing i found out that these fields were there in almost every ticket so this is not needed
+# Drop rows missing essential text fields
+df.dropna(subset=["Ticket Subject", "Ticket Description"], inplace=True)
 
-# print(df.info())
-
-
-
+# --- Improved Preprocessing ---
 import spacy
+import re
 
+# Load spaCy model without unnecessary components
 nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 
-def preprocess(text):
-    doc = nlp(text.lower())  # lowercase
+# Text cleaning function
+
+def preprocess_text(text: str) -> str:
+    """
+    Lowercase, remove non-alphabetic, remove stopwords, and lemmatize.
+    """
+    text = text.lower().strip()
+    doc = nlp(text)
     tokens = [
-        token.lemma_                 # lemmatization
-        for token in doc
-        if token.is_alpha           # remove punctuation/numbers
-        and not token.is_stop       # remove stopwords
+        token.lemma_ for token in doc
+        if token.is_alpha and not token.is_stop
     ]
     return " ".join(tokens)
 
+# Product cleaning function
+def preprocess_product(prod: str) -> str:
+    """
+    Lowercase and remove punctuation to normalize product names.
+    """
+    prod = prod.lower().strip()
+    # Keep alphanumeric and spaces
+    prod = re.sub(r'[^a-z0-9\s]', '', prod)
+    return prod
+
+# Apply preprocessing
 print("Processing Ticket Subject...")
-df["Ticket Subject"] = df["Ticket Subject"].progress_apply(preprocess)
+df["Ticket Subject"] = df["Ticket Subject"].progress_apply(preprocess_text)
+
 print("Processing Ticket Description...")
-df["Ticket Description"] = df["Ticket Description"].progress_apply(preprocess)
+df["Ticket Description"] = df["Ticket Description"].progress_apply(preprocess_text)
 
+print("Processing Product Purchased...")
+df["clean_product"] = df["Product Purchased"].progress_apply(preprocess_product)
 
+# Combine subject + description for embeddings
 df["clean_text"] = df["Ticket Subject"] + " " + df["Ticket Description"]
 
+# Preview cleaned data
+print(df[["Ticket ID", "clean_product", "clean_text"]].head())
 
-print(df[["Ticket ID", "Ticket Subject", "Ticket Description", "clean_text"]].head())
+# Save cleaned ticket data for downstream use
 df.to_csv("data/cleaned_tickets.csv", index=False)
+
+# Also save unique products list
+products = df["Product Purchased"].unique().tolist()
+import pickle
+with open("data/products.pkl", "wb") as f:
+    pickle.dump(products, f)
+
+print(f"Saved {len(products)} unique products to data/products.pkl")
