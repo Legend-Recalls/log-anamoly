@@ -1,127 +1,141 @@
+import os
+import uuid
+
 import streamlit as st
-import numpy as np
 import pandas as pd
-from sentence_transformers import SentenceTransformer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from transformers import pipeline
-from rapidfuzz import fuzz
-import pickle
+import numpy as np
+import hnswlib
+from sentence_transformers import SentenceTransformer, CrossEncoder
 
-#use cacheing so every search doesnt take too muhc time
+# Import your processor
+from preprocess import AdaptiveMTKProcessor
+
+CSV_FILE = "enhanced_mediatek_tickets.csv"
+PKL_FILE = "models/enhanced_tickets_df.pkl"
+EMB_FILE = "models/enhanced_ticket_embeddings.npy"
+INDEX_FILE = "models/enhanced_ticket_hnsw_index.bin"
+
+# Instantiate a single processor
+processor = AdaptiveMTKProcessor()
+
 @st.cache_resource
-def load_model():
-    return SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+def load_bi_encoder():
+    return SentenceTransformer("all-mpnet-base-v2")
 
 @st.cache_resource
-def load_zero_shot():
-    return pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+def load_cross_encoder():
+    return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 @st.cache_resource
-def load_data():
-    df = pd.read_pickle("data/tickets_df.pkl")
-    emb = np.load("data/ticket_embeddings.npy")
-    with open("data/products.pkl", "rb") as f:
-        products = pickle.load(f)
-    return df, emb, products
+def load_data_and_index():
+    df = pd.read_pickle(PKL_FILE)
+    embeddings = np.load(EMB_FILE)
+    index = hnswlib.Index(space='cosine', dim=embeddings.shape[1])
+    index.load_index(INDEX_FILE)
+    index.set_ef(50)
+    return df, embeddings, index
 
-# — PRODUCT DETECTOR —
-def detect_products(query, products, zero_shot):
-    nli = zero_shot(query, products)
-    sem_matches = [lbl for lbl, scr in zip(nli["labels"], nli["scores"]) if scr >= 0.7]
-    fuzzy = [p for p in products if fuzz.partial_ratio(query.lower(), p.lower()) >= 75]
-    substr = [p for p in products if any(tok in p.lower() for tok in query.lower().split())]
+def search_with_cross_encoder(query, bi_encoder, cross_encoder, df, index, hnsw_k=50, top_k=5):
+    q_emb = bi_encoder.encode([query], normalize_embeddings=True)
+    labels, _ = index.knn_query(q_emb, k=hnsw_k)
+    candidate_idxs = labels[0]
+    candidate_texts = df.iloc[candidate_idxs]["enhanced_text"].tolist()
+    cross_inputs = [[query, txt] for txt in candidate_texts]
+    cross_scores = cross_encoder.predict(cross_inputs)
+    top_n = np.argsort(cross_scores)[::-1][:top_k]
+    selected_idxs = candidate_idxs[top_n]
+    results = df.iloc[selected_idxs].copy()
+    results["CrossScore"] = cross_scores[top_n]
+    return results.reset_index(drop=True)
 
-    seen, out = set(), []
-    for lst in (sem_matches, fuzzy, substr):
-        for p in lst:
-            if p not in seen:
-                seen.add(p); out.append(p)
-    return out
+# Streamlit layout
+st.set_page_config(page_title="MediaTek Hybrid Ticket Search", layout="wide")
+st.title("🎯 MediaTek Hybrid Ticket Similarity Search")
 
-# similarity finder
-def find_similar_tickets(query_text, df, embeddings, products, model, zero_shot,
-                         n=5, tfidf_top_k=20, boost=5.0, prod_boost=10.0):
-    top_matches = detect_products(query_text, products, zero_shot)
-    top_product = top_matches[0] if top_matches else None
-    if not top_product:
-        st.warning("❌ Could not detect a related product.")
-        return pd.DataFrame()
+# Load data & models
+df, embeddings, hnsw_index = load_data_and_index()
+bi_encoder = load_bi_encoder()
+cross_encoder = load_cross_encoder()
 
-    mask = df["Product Purchased"] == top_product
-    sub_df   = df[mask].reset_index(drop=True)
-    sub_embs = embeddings[mask.values]
-    if len(sub_df) == 0:
-        st.warning("⚠️ No tickets for detected product. Falling back to all.")
-        sub_df, sub_embs = df.reset_index(drop=True), embeddings
+# --- Search Section ---
+st.header("🔍 Search Existing Tickets")
+query = st.text_input("Enter your ticket query")
+hnsw_k = st.slider("HNSW candidate pool size", 10, 200, 50)
+top_k = st.slider("Top K results", 1, 10, 5)
 
-    # TF-IDF
-    tfidf = TfidfVectorizer()
-    X_tfidf = tfidf.fit_transform(sub_df["clean_text"])
-    q_tfidf = tfidf.transform([query_text])
-    tfidf_sims = cosine_similarity(q_tfidf, X_tfidf)[0] * 100
+if st.button("Search") and query:
+    with st.spinner("Searching..."):
+        results = search_with_cross_encoder(
+            query, bi_encoder, cross_encoder, df, hnsw_index, hnsw_k, top_k
+        )
+    if results.empty:
+        st.warning("No similar tickets found.")
+    else:
+        for i, row in results.iterrows():
+            st.markdown(f"### Match #{i+1} (Score: {row['CrossScore']:.4f})")
+            st.markdown(f"**🎫 ID:** {row['ticket_id']}")
+            st.markdown(f"**📌 Title:** {row['title']}")
+            st.markdown(f"**📝 Description:** {row['description']}")
+            st.markdown(f"**🔁 Steps:** {row['repeat_steps']}")
+            st.markdown("---")
 
-    # Top-K
-    top_idxs = tfidf_sims.argsort()[::-1][:tfidf_top_k]
-    sub_df   = sub_df.iloc[top_idxs].reset_index(drop=True)
-    sub_embs = sub_embs[top_idxs]
+# --- Add Ticket Section ---
+st.header("➕ Add a New Ticket")
 
-    # S
-    q_emb     = model.encode([query_text])[0]
-    sem_sims  = cosine_similarity([q_emb], sub_embs)[0] * 100
-
-    # Combine scores
-    weight_tfidf = 0.8
-    weight_sem   = 0.2
-    combined = (
-        weight_tfidf * tfidf_sims[top_idxs]
-      + weight_sem   * sem_sims
-      + (sub_df["Product Purchased"] == top_product).astype(float) * prod_boost
-      + sub_df["Resolution"].notna().astype(float) * boost
+with st.form("add_ticket_form"):
+    new_title = st.text_area(
+        "Ticket Title",
+        placeholder="e.g., mtk: camera crash during init"
+    )
+    new_description = st.text_area("Ticket Description")
+    new_steps = st.text_area(
+        "Repeat Steps (→ separated)",
+        placeholder="e.g., reboot → flash → observe logcat"
     )
 
-    sub_df["tfidf_score"]    = tfidf_sims[top_idxs]
-    sub_df["semantic_score"] = sem_sims
-    sub_df["final_score"]    = combined
+    submitted = st.form_submit_button("Add Ticket")
+    if submitted and new_title and new_description and new_steps:
+        with st.spinner("Processing new ticket..."):
+            # Preprocess with your class instance
+            title_proc = processor.preprocess_title_enhanced(new_title)
+            steps_proc = processor.preprocess_steps_enhanced(new_steps)
+            desc_proc  = processor.preprocess_description_enhanced([new_description])[0]
 
-    return sub_df.sort_values("final_score", ascending=False).head(n)[[
-        "Ticket ID","Product Purchased","Ticket Subject",
-        "tfidf_score","semantic_score","final_score"
-    ]]
+            row = {
+                "ticket_id": str(uuid.uuid4())[:8],
+                "title": new_title,
+                "description": new_description,
+                "repeat_steps": new_steps,
+                "title_processed": title_proc,
+                "steps_processed": steps_proc,
+                "desc_processed": desc_proc
+            }
+            # Use the class method as well
+            row["enhanced_text"] = processor.create_enhanced_features(row)
 
-st.title(" Smart Ticket Finder")
+            # Embed
+            new_emb = bi_encoder.encode(
+                [row["enhanced_text"]], normalize_embeddings=True
+            )[0]
 
-query = st.text_input("Enter your issue/query:", placeholder="e.g., xbox controller firmware not updating")
-num_results = st.slider("Number of results", 1, 20, 5)
+            # Add to HNSW index
+            new_idx = len(df)
+            hnsw_index.add_items([new_emb], [new_idx])
 
-if query:
-    with st.spinner("Searching..."):
-        df, embeddings, products = load_data()
-        model      = load_model()
-        zero_shot  = load_zero_shot()
+            # Append to DataFrame
+            df.loc[new_idx] = row
 
-        result_df = find_similar_tickets(
-            query_text=query,
-            df=df,
-            embeddings=embeddings,
-            products=products,
-            model=model,
-            zero_shot=zero_shot,
-            n=num_results
-        )
-        if not result_df.empty:
-            st.success("Top matching tickets:")
-            st.dataframe(result_df)
-    
+            # Save updates
+            np.save(EMB_FILE, np.vstack([embeddings, new_emb]))
+            df.to_pickle(PKL_FILE)
+            hnsw_index.save_index(INDEX_FILE)
+            pd.DataFrame([row])[[
+                "ticket_id", "title", "description", "repeat_steps", "enhanced_text"
+            ]].to_csv(
+                CSV_FILE,
+                mode='a',
+                index=False,
+                header=not os.path.exists(CSV_FILE)
+            )
 
-    st.subheader("📄 View Full Ticket Details")
-    sel = st.selectbox("Pick a Ticket ID", result_df["Ticket ID"].tolist())
-    if sel:
-        t = df[df["Ticket ID"]==sel].iloc[0]
-        st.markdown(f"""
-**🎫 ID:** {t['Ticket ID']}  
-**💻 Product:** {t['Product Purchased']}  
-**📌 Subject:** {t['Ticket Subject']}  
-**📝 Description:** {t['Ticket Description']}  
-**✅ Resolution:** {t['Resolution'] or '—'}  
-""")
+            st.success("✅ New ticket added and saved successfully!")

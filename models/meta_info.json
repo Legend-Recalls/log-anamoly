@@ -1,0 +1,7 @@
+{
+  "model_name": "all-mpnet-base-v2",
+  "embedding_dim": 768,
+  "num_tickets": 302,
+  "padding": 60,
+  "preprocessing_version": "v2.1-enhanced-mtk"
+}
