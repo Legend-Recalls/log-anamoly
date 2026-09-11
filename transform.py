@@ -3,6 +3,8 @@ import pandas as pd
 import hnswlib
 import pickle
 import json
+import argparse
+import math
 from sentence_transformers import SentenceTransformer
 
 # --- Paths & Config ---
@@ -13,11 +15,20 @@ INDEX_FILE = "models/enhanced_ticket_hnsw_index.bin"
 ID_MAP_FILE = "models/index_id_map.pkl"
 META_FILE = "models/meta_info.json"
 MODEL_NAME = "all-mpnet-base-v2"
-PADDING_RATIO = 0.2
+DEFAULT_GROWTH_FACTOR = 1.5
+MIN_SPARE_CAPACITY = 1_000
+
+parser = argparse.ArgumentParser(description="Build the HNSW ticket vector index")
+parser.add_argument("--input", default=CSV_FILE, help="Preprocessed ticket CSV")
+parser.add_argument("--max-elements", type=int, default=None,
+                    help="Index capacity for online additions; must be >= ticket count")
+parser.add_argument("--batch-size", type=int, default=64,
+                    help="Embedding batch size; lower this if memory is tight")
+args = parser.parse_args()
 
 # --- Load Ticket Data ---
 print("📄 Loading ticket data...")
-df = pd.read_csv(CSV_FILE)
+df = pd.read_csv(args.input)
 texts = df["enhanced_text"].tolist()
 num_elements = len(texts)
 
@@ -28,7 +39,8 @@ print("🔍 Encoding tickets...")
 embeddings = model.encode(
     texts,
     show_progress_bar=True,
-    normalize_embeddings=True
+    normalize_embeddings=True,
+    batch_size=args.batch_size
 )
 
 # --- Sanity Check ---
@@ -41,11 +53,16 @@ np.save(EMB_FILE, embeddings)
 df.to_pickle(PKL_FILE)
 
 # --- Build HNSW Index ---
-padding = int(num_elements * PADDING_RATIO)
-print(f"📦 Initializing HNSW index (max_elements={num_elements + padding})...")
+default_capacity = max(math.ceil(num_elements * DEFAULT_GROWTH_FACTOR),
+                       num_elements + MIN_SPARE_CAPACITY)
+max_elements = args.max_elements or default_capacity
+if max_elements < num_elements:
+    raise ValueError("--max-elements must be at least the number of tickets")
+spare_capacity = max_elements - num_elements
+print(f"📦 Initializing HNSW index (max_elements={max_elements})...")
 index = hnswlib.Index(space="cosine", dim=dim)
 index.init_index(
-    max_elements=num_elements + padding,
+    max_elements=max_elements,
     ef_construction=200,
     M=16
 )
@@ -65,7 +82,10 @@ meta = {
     "model_name": MODEL_NAME,
     "embedding_dim": dim,
     "num_tickets": num_elements,
-    "padding": padding,
+    "max_elements": max_elements,
+    "spare_capacity": spare_capacity,
+    "ef_construction": 200,
+    "M": 16,
     "preprocessing_version": "v2.1-enhanced-mtk"
 }
 with open(META_FILE, "w") as f:

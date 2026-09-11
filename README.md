@@ -1,5 +1,17 @@
 # Ticket Similarity AI System
 
+## Project scope
+
+This repository's primary project is the embedding-based ticket similarity
+system. The interview story is:
+
+```
+ticket CSV -> preprocessing -> embeddings -> HNSW index -> hybrid search UI
+```
+
+`mega.py` and `search_rag.py` are separate experimental scripts and are not
+part of this pipeline.
+
 This project implements a sophisticated ticket similarity system that leverages state-of-the-art NLP models to find semantically similar support tickets. It's designed to be a powerful tool for customer support teams, helping them quickly find solutions to recurring issues.
 
 This README provides a detailed walkthrough of the entire system, from data preprocessing to the final web application. It's intended to be an educational resource for students and anyone interested in building practical NLP applications.
@@ -75,6 +87,26 @@ Once the data is preprocessed, we need to convert it into a format that our sear
 - **HNSW Indexing:** We use `hnswlib` to build an HNSW index for fast similarity search.
 - **Artifact Storage:** The embeddings, DataFrame, HNSW index, and metadata are saved to the `models/` directory.
 
+### Scalability choices
+
+HNSW is an approximate nearest-neighbour graph. It does not compare a query
+with every ticket, so query latency stays practical as the ticket collection
+grows. This project uses these controls:
+
+- `M=16` controls graph connectivity. More links can improve recall but use
+  more memory.
+- `ef_construction=200` spends extra work while building the graph to improve
+  retrieval quality.
+- `ef` controls query-time accuracy versus latency. The app sets it to at
+  least the candidate pool size.
+- `--max-elements` reserves index capacity for newly added tickets. When that
+  capacity is reached, the app grows the index geometrically instead of
+  rebuilding it for every addition.
+
+For a production multi-user system, ticket writes should go through a single
+ingestion service or queue. The Streamlit add form is intended for a
+single-writer prototype; concurrent writes need a database and locking.
+
 ### 3. Hybrid Search & Application (`app.py` and `main.py`)
 
 The final stage is the search itself, which is exposed through a Streamlit web application.
@@ -97,9 +129,13 @@ The final stage is the search itself, which is exposed through a Streamlit web a
 
 2.  **Preprocess the data and build the index:**
     ```bash
-    python preprocess.py
-    python transform.py
+    python preprocess.py --input mediatek_tickets.csv
+    python transform.py --max-elements 5000
     ```
+
+    `--max-elements 5000` means the current index has room for up to 5,000
+    ticket vectors before it needs to grow. Choose this based on expected
+    growth and available memory.
 
 3.  **Run the Streamlit application:**
     ```bash

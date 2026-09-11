@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import logging
+import argparse
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -761,25 +762,7 @@ class AdaptiveMTKProcessor:
         df['desc_processed'] = self.preprocess_description_enhanced(descriptions)
 
         logger.info("Creating enhanced_text field…")
-        def _make_enhanced(row):
-            parts = [
-                f"[TITLE] {row['title_processed']['text']}",
-                f"[STEPS] {row['steps_processed']['text']}",
-                f"[DESC] {row['desc_processed']['text']}"
-            ]
-            # optional metadata tags
-            hw = row['title_processed']['hw_module']
-            if hw and hw != "unknown":
-                parts.append(f"[MODULE] {hw}")
-            plats = row['title_processed']['platforms']
-            if plats:
-                parts.append(f"[PLATFORM] {' '.join(plats)}")
-            seq = row['steps_processed']['sequence_length']
-            if seq > 1:
-                parts.append(f"[SEQ_LEN] {seq}")
-            return " ".join(parts)
-
-        df['enhanced_text'] = df.apply(_make_enhanced, axis=1)
+        df['enhanced_text'] = df.apply(self.create_enhanced_features, axis=1)
 
         # Summary columns for quick analysis
         df['hardware_module'] = df['title_processed'].map(lambda x: x['hw_module'])
@@ -789,6 +772,27 @@ class AdaptiveMTKProcessor:
 
         logger.info(f"Finished processing {len(df)} tickets")
         return df
+
+    def create_enhanced_features(self, row: Dict[str, any]) -> str:
+        """Build the same searchable text for batch and newly added tickets."""
+        title = row['title_processed']
+        steps = row['steps_processed']
+        desc = row['desc_processed']
+        parts = [
+            f"[TITLE] {title['text']}",
+            f"[STEPS] {steps['text']}",
+            f"[DESC] {desc['text']}"
+        ]
+        hw = title['hw_module']
+        if hw and hw != "unknown":
+            parts.append(f"[MODULE] {hw}")
+        platforms = title['platforms']
+        if platforms:
+            parts.append(f"[PLATFORM] {' '.join(platforms)}")
+        sequence_length = steps['sequence_length']
+        if sequence_length > 1:
+            parts.append(f"[SEQ_LEN] {sequence_length}")
+        return " ".join(parts)
 
 
     
@@ -801,10 +805,15 @@ class AdaptiveMTKProcessor:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Preprocess MediaTek support tickets")
+    parser.add_argument("--input", default="mediatek_tickets.csv")
+    parser.add_argument("--output", default="enhanced_mediatek_tickets.csv")
+    parser.add_argument("--skip-pattern-discovery", action="store_true")
+    args = parser.parse_args()
+
     processor = AdaptiveMTKProcessor()
-    # First, discover patterns from your historical data
-    # processor.discover_patterns(pd.read_csv("synthetic_mediatek_tickets.csv"))
-    # Then run the pipeline:
-    df_processed = processor.process_mediatek_tickets("synthetic_mediatek_tickets.csv")
-    df_processed.to_csv("enhanced_mediatek_tickets.csv", index=False)
-    logger.info("Saved enhanced_mediatek_tickets.csv")
+    if not args.skip_pattern_discovery:
+        processor.discover_patterns(pd.read_csv(args.input))
+    df_processed = processor.process_mediatek_tickets(args.input)
+    df_processed.to_csv(args.output, index=False)
+    logger.info(f"Saved {args.output}")

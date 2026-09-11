@@ -1,5 +1,5 @@
 ticket_id,title,description,repeat_steps
-MTK-1000,MTK: modem failure : ro.mediatek.platform,The modem module on ro.product.board encountered a bootloop during routine testing. Logs suggest a hardware exception.,connect to adb → enter bootloader → enter bootloader
+MTK-1000,MTK: modem failure : ro.mediatek.platform,The modem module on ro.product.board encountered a bootloop during routine testing. Logs suggest a hardware exception.,connect to adb → enter bootloader → flash vbmeta
 MTK-1001,Error: audio not responding - ro.board.platform,The camera module on ro.product.board encountered a no boot during routine testing. Logs suggest a hardware exception.,reboot device → enable developer mode → connect to adb
 MTK-1002,MTK: modem failure : ro.mediatek.platform,The modem module on ro.board.platform encountered a no boot during routine testing. Logs suggest a hardware exception.,enable developer mode → run logcat → flash firmware
 MTK-1003,MTK Crash Log - modem,The camera module on ro.board.platform encountered a device crash during routine testing. Logs suggest a hardware exception.,flash firmware → flash firmware → run logcat

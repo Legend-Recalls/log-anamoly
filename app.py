@@ -1,5 +1,7 @@
 import os
 import uuid
+import json
+import pickle
 
 import streamlit as st
 import pandas as pd
@@ -14,6 +16,8 @@ CSV_FILE = "enhanced_mediatek_tickets.csv"
 PKL_FILE = "models/enhanced_tickets_df.pkl"
 EMB_FILE = "models/enhanced_ticket_embeddings.npy"
 INDEX_FILE = "models/enhanced_ticket_hnsw_index.bin"
+ID_MAP_FILE = "models/index_id_map.pkl"
+META_FILE = "models/meta_info.json"
 
 # Instantiate a single processor
 processor = AdaptiveMTKProcessor()
@@ -32,12 +36,16 @@ def load_data_and_index():
     embeddings = np.load(EMB_FILE)
     index = hnswlib.Index(space='cosine', dim=embeddings.shape[1])
     index.load_index(INDEX_FILE)
-    index.set_ef(50)
+    index.set_ef(200)
     return df, embeddings, index
 
 def search_with_cross_encoder(query, bi_encoder, cross_encoder, df, index, hnsw_k=50, top_k=5):
+    candidate_count = min(hnsw_k, index.get_current_count())
+    if candidate_count == 0:
+        return pd.DataFrame()
+    index.set_ef(max(50, candidate_count))
     q_emb = bi_encoder.encode([query], normalize_embeddings=True)
-    labels, _ = index.knn_query(q_emb, k=hnsw_k)
+    labels, _ = index.knn_query(q_emb, k=candidate_count)
     candidate_idxs = labels[0]
     candidate_texts = df.iloc[candidate_idxs]["enhanced_text"].tolist()
     cross_inputs = [[query, txt] for txt in candidate_texts]
@@ -120,15 +128,34 @@ with st.form("add_ticket_form"):
 
             # Add to HNSW index
             new_idx = len(df)
+            current_count = hnsw_index.get_current_count()
+            if current_count >= hnsw_index.get_max_elements():
+                hnsw_index.resize_index(max(current_count + 1, int(current_count * 1.5)))
             hnsw_index.add_items([new_emb], [new_idx])
 
             # Append to DataFrame
             df.loc[new_idx] = row
 
             # Save updates
-            np.save(EMB_FILE, np.vstack([embeddings, new_emb]))
+            # Reload from disk so a Streamlit rerun cannot overwrite vectors
+            # added by an earlier request.
+            saved_embeddings = np.load(EMB_FILE)
+            np.save(EMB_FILE, np.vstack([saved_embeddings, new_emb]))
             df.to_pickle(PKL_FILE)
             hnsw_index.save_index(INDEX_FILE)
+            with open(ID_MAP_FILE, "rb") as f:
+                id_map = pickle.load(f)
+            id_map[new_idx] = row["ticket_id"]
+            with open(ID_MAP_FILE, "wb") as f:
+                pickle.dump(id_map, f)
+            if os.path.exists(META_FILE):
+                with open(META_FILE, encoding="utf-8") as f:
+                    meta = json.load(f)
+                meta["num_tickets"] = hnsw_index.get_current_count()
+                meta["max_elements"] = hnsw_index.get_max_elements()
+                meta["spare_capacity"] = meta["max_elements"] - meta["num_tickets"]
+                with open(META_FILE, "w", encoding="utf-8") as f:
+                    json.dump(meta, f, indent=2)
             pd.DataFrame([row])[[
                 "ticket_id", "title", "description", "repeat_steps", "enhanced_text"
             ]].to_csv(
@@ -139,3 +166,4 @@ with st.form("add_ticket_form"):
             )
 
             st.success("✅ New ticket added and saved successfully!")
+            load_data_and_index.clear()
