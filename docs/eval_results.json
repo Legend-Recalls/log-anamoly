@@ -1,0 +1,439 @@
+{
+  "recall@1": 0.8333333333333334,
+  "recall@3": 0.875,
+  "recall@5": 0.875,
+  "mrr": 0.8472222222222222,
+  "latency_p50_ms": 2263.1890773773193,
+  "hnsw": false,
+  "rows": [
+    {
+      "query": "camera firmware timeout on ro.mediatek.platform",
+      "want": [
+        "MTK-2002",
+        "MTK-2040"
+      ],
+      "got": [
+        "MTK-2040",
+        "MTK-3022",
+        "MTK-2002",
+        "MTK-2082",
+        "MTK-2026"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "S_FT_DOWNLOAD_FAIL 4008",
+      "want": [
+        "MTK-3170",
+        "MTK-3172"
+      ],
+      "got": [
+        "MTK-3170",
+        "MTK-3172",
+        "MTK-3174",
+        "MTK-3173",
+        "MTK-3178"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "widevine L1 dropped to L3",
+      "want": [
+        "MTK-3114",
+        "MTK-3110"
+      ],
+      "got": [
+        "MTK-3314",
+        "MTK-3668",
+        "MTK-3680",
+        "MTK-3277",
+        "MTK-3205"
+      ],
+      "recall@1": false,
+      "recall@3": false,
+      "recall@5": false,
+      "rr": 0.0
+    },
+    {
+      "query": "bluetooth showing error",
+      "want": [
+        "MTK-3126",
+        "MTK-3200"
+      ],
+      "got": [
+        "MTK-1086",
+        "MTK-1031",
+        "MTK-3019",
+        "MTK-2011",
+        "MTK-2039"
+      ],
+      "recall@1": false,
+      "recall@3": false,
+      "recall@5": false,
+      "rr": 0.0
+    },
+    {
+      "query": "avc denied camera hal",
+      "want": [
+        "MTK-3120"
+      ],
+      "got": [
+        "MTK-3120",
+        "MTK-3288",
+        "MTK-3129",
+        "MTK-3369",
+        "MTK-3544"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "kernel panic phone reboots itself",
+      "want": [
+        "MTK-3130",
+        "MTK-3131"
+      ],
+      "got": [
+        "MTK-3132",
+        "MTK-3135",
+        "MTK-2029",
+        "MTK-3139",
+        "MTK-3169"
+      ],
+      "recall@1": false,
+      "recall@3": false,
+      "recall@5": false,
+      "rr": 0.0
+    },
+    {
+      "query": "battery stuck at 50 percent for hours",
+      "want": [
+        "MTK-3380"
+      ],
+      "got": [
+        "MTK-3380",
+        "MTK-3149",
+        "MTK-3697",
+        "MTK-3542",
+        "MTK-3384"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "5G icon shows but speed is 4G",
+      "want": [
+        "MTK-3310",
+        "MTK-3311"
+      ],
+      "got": [
+        "MTK-3310",
+        "MTK-3147",
+        "MTK-3133",
+        "MTK-3307",
+        "MTK-3272"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "eSIM download stalls at 80 percent",
+      "want": [
+        "MTK-3150",
+        "MTK-3152"
+      ],
+      "got": [
+        "MTK-3150",
+        "MTK-3221",
+        "MTK-3542",
+        "MTK-3157",
+        "MTK-3154"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "under display fingerprint enroll always fails",
+      "want": [
+        "MTK-3350",
+        "MTK-3352"
+      ],
+      "got": [
+        "MTK-3350",
+        "MTK-3121",
+        "MTK-3624",
+        "MTK-3354",
+        "MTK-3333"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "UFS read errors on long video record",
+      "want": [
+        "MTK-3100"
+      ],
+      "got": [
+        "MTK-3100",
+        "MTK-3103",
+        "MTK-3286",
+        "MTK-3078",
+        "MTK-3102"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "watchdog timeout freeze then reboot",
+      "want": [
+        "MTK-3140",
+        "MTK-3141"
+      ],
+      "got": [
+        "MTK-3140",
+        "MTK-3141",
+        "MTK-3148",
+        "MTK-3146",
+        "MTK-3147"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "wifi switch got turned off no internet",
+      "want": [
+        "MTK-3400",
+        "MTK-3401"
+      ],
+      "got": [
+        "MTK-3400",
+        "MTK-3198",
+        "MTK-3404",
+        "MTK-3417",
+        "MTK-3402"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "alarm rang at night instead of morning",
+      "want": [
+        "MTK-3454",
+        "MTK-3455"
+      ],
+      "got": [
+        "MTK-3454",
+        "MTK-3446",
+        "MTK-3460",
+        "MTK-3461",
+        "MTK-3457"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "screen turned black and white overnight",
+      "want": [
+        "MTK-3451",
+        "MTK-3452"
+      ],
+      "got": [
+        "MTK-3451",
+        "MTK-3481",
+        "MTK-3494",
+        "MTK-3472",
+        "MTK-3452"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "phone narrates every tap out loud",
+      "want": [
+        "MTK-3487",
+        "MTK-3488"
+      ],
+      "got": [
+        "MTK-3487",
+        "MTK-3640",
+        "MTK-3304",
+        "MTK-3458",
+        "MTK-3441"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "forgot PIN after months of fingerprint",
+      "want": [
+        "MTK-3616",
+        "MTK-3617"
+      ],
+      "got": [
+        "MTK-3616",
+        "MTK-3622",
+        "MTK-3669",
+        "MTK-3617",
+        "MTK-3624"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "earbuds play audio from the wrong phone",
+      "want": [
+        "MTK-3433",
+        "MTK-3435"
+      ],
+      "got": [
+        "MTK-3433",
+        "MTK-3434",
+        "MTK-3436",
+        "MTK-3435",
+        "MTK-3442"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "deleted holiday photos how to recover",
+      "want": [
+        "MTK-3535",
+        "MTK-3536"
+      ],
+      "got": [
+        "MTK-3535",
+        "MTK-3536",
+        "MTK-3539",
+        "MTK-3614",
+        "MTK-3555"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "music stops when the screen turns off",
+      "want": [
+        "MTK-3565",
+        "MTK-3567"
+      ],
+      "got": [
+        "MTK-3565",
+        "MTK-3653",
+        "MTK-3545",
+        "MTK-3652",
+        "MTK-3420"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "messages arrive hours late",
+      "want": [
+        "MTK-3568",
+        "MTK-3569"
+      ],
+      "got": [
+        "MTK-3324",
+        "MTK-3464",
+        "MTK-3569",
+        "MTK-3568",
+        "MTK-3570"
+      ],
+      "recall@1": false,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 0.3333333333333333
+    },
+    {
+      "query": "flashlight turns on by itself in pocket",
+      "want": [
+        "MTK-3518",
+        "MTK-3517"
+      ],
+      "got": [
+        "MTK-3518",
+        "MTK-3517",
+        "MTK-3257",
+        "MTK-3472",
+        "MTK-3511"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "overnight charge only reached 60 percent",
+      "want": [
+        "MTK-3694",
+        "MTK-3695"
+      ],
+      "got": [
+        "MTK-3694",
+        "MTK-3228",
+        "MTK-3384",
+        "MTK-3289",
+        "MTK-3221"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    },
+    {
+      "query": "alarm shows but makes no sound",
+      "want": [
+        "MTK-3457",
+        "MTK-3458"
+      ],
+      "got": [
+        "MTK-3457",
+        "MTK-3446",
+        "MTK-3459",
+        "MTK-3458",
+        "MTK-3454"
+      ],
+      "recall@1": true,
+      "recall@3": true,
+      "recall@5": true,
+      "rr": 1.0
+    }
+  ]
+}

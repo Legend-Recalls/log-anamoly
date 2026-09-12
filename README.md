@@ -1,152 +1,184 @@
 # Ticket Similarity AI System
 
-## Project scope
+Find past support tickets that match a new problem — by meaning, not keywords.
+Built for MediaTek support data: 902 tickets covering modem failures, Android
+platform quirks, and everyday user issues ("wifi got turned off").
 
-This repository's primary project is the embedding-based ticket similarity
-system. The interview story is:
+![Search in action](docs/app_search.png)
 
+**Scoreboard (24-query eval, measured — see [Evaluation](#evaluation)):**
+
+| Metric | Score |
+|---|---|
+| Recall@1 | 0.83 |
+| Recall@5 | 0.88 |
+| MRR | 0.85 |
+| Query latency (p50, CPU) | ~2.3 s |
+
+## Features
+
+- **Hybrid search** — fast embedding retrieval shortlists 50 candidates, an
+  accurate cross-encoder reranks them. Speed *and* precision.
+- **Ticket-aware cleaning** — an `AdaptiveMTKProcessor` learns platform ids
+  (`ro.mediatek.platform`), chip names (`MT6896`), build tags (`ALPS.K2`),
+  and error codes (`S_FT_DOWNLOAD_FAIL`, `0xC0050003`) from your data, then
+  folds them into every ticket — and every query.
+- **Rules-first keyword sorting** — common terms go through instant word
+  lists; only unknown terms reach the heavy classifier. Measured: better
+  accuracy at a fraction of the build cost.
+- **Grows live** — new tickets added in the UI are embedded and indexed on
+  the spot, no rebuild needed (index auto-expands).
+- **CI-built index** — push tickets or code and GitHub Actions rebuilds
+  everything and publishes a versioned Release.
+
+## How it works
+
+Two transformer models split the job:
+
+- **Bi-encoder** (`all-mpnet-base-v2`) turns each text into one vector,
+  independently. Comparing vectors is cheap, so it scans the whole corpus.
+- **Cross-encoder** (`ms-marco-MiniLM-L-6-v2`) reads the query *together
+  with* one candidate and scores the pair 0–1. Accurate, but too slow to
+  run on all 902 tickets — so it only sees the shortlist.
+
+### Build time (once per data change)
+
+```mermaid
+flowchart LR
+    A[mediatek_tickets.csv\n902 tickets] --> B[preprocess.py\nlearn patterns, clean text]
+    B --> C[enhanced_mediatek_tickets.csv\none rich search text per ticket]
+    C --> D[transform.py\nbi-encoder embeddings]
+    D --> E[models/ files]
+    E --> F[(HNSW index)]
+    E --> G[embeddings + dataframe\nid map + metadata]
 ```
-ticket CSV -> preprocessing -> embeddings -> HNSW index -> hybrid search UI
+
+### Query time (every search)
+
+```mermaid
+flowchart LR
+    Q[raw query] --> C1[clean_query\nsame cleaning as tickets]
+    C1 --> B[bi-encoder\nquery vector]
+    B --> H[HNSW\n50 nearest tickets]
+    H --> X[cross-encoder\nrerank 50 pairs]
+    X --> T[top 5 + fix steps]
 ```
 
-`mega.py` and `search_rag.py` are separate experimental scripts and are not
-part of this pipeline.
+## Project structure
 
-This project implements a sophisticated ticket similarity system that leverages state-of-the-art NLP models to find semantically similar support tickets. It's designed to be a powerful tool for customer support teams, helping them quickly find solutions to recurring issues.
+| Path | What it is |
+|---|---|
+| `mediatek_tickets.csv` | Source data: 902 tickets (`ticket_id,title,description,repeat_steps`) |
+| `preprocess.py` | Learns patterns, cleans text, writes the enhanced CSV |
+| `transform.py` | Embeds tickets, builds the HNSW index + metadata |
+| `app.py` | Streamlit UI: search + add tickets |
+| `main.py` | Same search as a plain script |
+| `eval_retrieval.py` | 24-query eval harness (recall, MRR, latency, chart) |
+| `models/` | Built artifacts: index, embeddings, dataframe, id map, meta |
+| `docs/` | Eval chart/results, app screenshots |
+| `.github/workflows/build-index.yml` | CI: rebuild + publish a Release on every push |
 
-This README provides a detailed walkthrough of the entire system, from data preprocessing to the final web application. It's intended to be an educational resource for students and anyone interested in building practical NLP applications.
+## Setup
 
-## 🚀 Key Features
+```bash
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+```
 
-- **Hybrid Search:** Combines a fast bi-encoder for candidate retrieval with a more accurate cross-encoder for re-ranking, providing both speed and precision.
-- **Advanced Preprocessing:** Utilizes a custom `AdaptiveMTKProcessor` that dynamically discovers patterns, keywords, and technical jargon from the data.
-- **Efficient Indexing:** Employs HNSWlib for building a highly efficient approximate nearest neighbor (ANN) index, enabling real-time search even with large datasets.
-- **Interactive Web App:** A Streamlit-based web application provides a user-friendly interface for searching and adding tickets.
-- **Dynamic Updates:** The system can learn from new tickets, which are added to the index on the fly.
+Python 3.11 recommended — `hnswlib` has no prebuilt install for 3.14.
+(CI builds on 3.11.)
 
-## 🧠 Core Concepts Explained
+## Usage
 
-### Bi-Encoders vs. Cross-Encoders
+```bash
+# 1. Clean tickets and learn patterns (~10 min, downloads models once)
+python preprocess.py --input mediatek_tickets.csv --output enhanced_mediatek_tickets.csv
 
-In this project, we use two types of Transformer-based models for our search: bi-encoders and cross-encoders. Understanding their differences is key to understanding our hybrid search approach.
+# 2. Embed + index (~4 min)
+python transform.py
 
-- **Bi-Encoders:**
-  - A bi-encoder processes two pieces of text (e.g., a query and a ticket) independently. It generates a fixed-size embedding (a vector of numbers) for each piece of text.
-  - To find similar items, we calculate the cosine similarity between the query embedding and the embeddings of all the tickets in our database. This is very fast, especially when combined with an ANN index like HNSW.
-  - **In this project:** We use a `SentenceTransformer` model as our bi-encoder. It's used in the first stage of our search to quickly find a large set of candidate tickets.
+# 3. Search in the browser
+streamlit run app.py
 
-- **Cross-Encoders:**
-  - A cross-encoder, on the other hand, processes two pieces of text together as a single input. It takes both the query and a potential match and outputs a single score from 0 to 1, indicating their similarity.
-  - Cross-encoders are much more accurate than bi-encoders because they can pay attention to the interactions between the two texts. However, they are also much slower, as they have to perform a full computation for every single query-ticket pair.
-  - **In this project:** We use a `CrossEncoder` model in the second stage of our search. We only use it on the small set of candidates retrieved by the bi-encoder, which gives us the best of both worlds: the speed of the bi-encoder and the accuracy of the cross-encoder.
+# 4. Score the system against 24 known-good queries
+python eval_retrieval.py
+```
 
-### Regular Expressions (Regex)
+Skip pattern learning on rebuilds with `--skip-pattern-discovery`.
+Tune index headroom with `transform.py --max-elements 5000`.
 
-- A regular expression (or regex) is a sequence of characters that defines a search pattern. It's a powerful tool for finding and extracting specific patterns of text.
-- **In this project:** We use regex in our `AdaptiveMTKProcessor` to discover and extract structured information from the ticket text, such as:
-  - **Platform Identifiers:** A regex like `\bro\.[a-z][a-z0-9_.]{3,}\b` can find Android properties like `ro.mediatek.platform`.
-  - **Error Codes:** A regex like `\b0x[0-9a-f]{3,}\b` can find hexadecimal error codes like `0xdeadbeef`.
+## Evaluation
 
-## 🛠️ Technologies Used
+`eval_retrieval.py` runs 24 queries — half technical (`S_FT_DOWNLOAD_FAIL
+4008`, `avc denied camera hal`), half plain user words (`wifi switch got
+turned off`, `phone narrates every tap`) — each with 1–2 tickets verified
+to solve it. It runs the real pipeline (clean → embed → candidates →
+rerank) and reports Recall@k, MRR, and latency. Candidates here come from
+exact search over the same vectors, so numbers are an upper bound on the
+approximate index.
 
-- **[Streamlit](https://streamlit.io/):** For building the interactive web application.
-- **[Sentence Transformers](https://www.sbert.net/):** For generating high-quality sentence and text embeddings.
-- **[Hugging Face Transformers](https://huggingface.co/transformers/):** For accessing pre-trained language models, including the zero-shot classification model.
-- **[HNSWlib](https://github.com/nmslib/hnswlib):** For building the high-performance approximate nearest neighbor search index.
-- **[Pandas](https://pandas.pydata.org/):** For data manipulation and analysis.
-- **[NumPy](https://numpy.org/):** For numerical operations, especially on the embeddings.
-- **[Spacy](https://spacy.io/):** For natural language processing tasks like tokenization and lemmatization.
-- **[Scikit-learn](https://scikit-learn.org/):** For TF-IDF vectorization.
+![Evaluation results](docs/eval.png)
 
-## 🔧 How It Works
+| # | Query | Top hit | Hit? |
+|---|---|---|---|
+| 1 | camera firmware timeout on ro.mediatek.platform | MTK-2040 | ✅ |
+| 2 | S_FT_DOWNLOAD_FAIL 4008 | MTK-3170 | ✅ |
+| 3 | widevine L1 dropped to L3 | MTK-3314 | ❌ |
+| 4 | bluetooth showing error | MTK-1086 | ❌ |
+| 5 | avc denied camera hal | MTK-3120 | ✅ |
+| 6 | kernel panic phone reboots itself | MTK-3132 | ❌ |
+| 7 | battery stuck at 50 percent for hours | MTK-3380 | ✅ |
+| 8 | 5G icon shows but speed is 4G | MTK-3310 | ✅ |
+| 9 | eSIM download stalls at 80 percent | MTK-3150 | ✅ |
+| 10 | under display fingerprint enroll always fails | MTK-3350 | ✅ |
+| 11 | UFS read errors on long video record | MTK-3100 | ✅ |
+| 12 | watchdog timeout freeze then reboot | MTK-3140 | ✅ |
+| 13 | wifi switch got turned off no internet | MTK-3400 | ✅ |
+| 14 | alarm rang at night instead of morning | MTK-3454 | ✅ |
+| 15 | screen turned black and white overnight | MTK-3451 | ✅ |
+| 16 | phone narrates every tap out loud | MTK-3487 | ✅ |
+| 17 | forgot PIN after months of fingerprint | MTK-3616 | ✅ |
+| 18 | earbuds play audio from the wrong phone | MTK-3433 | ✅ |
+| 19 | deleted holiday photos how to recover | MTK-3535 | ✅ |
+| 20 | music stops when the screen turns off | MTK-3565 | ✅ |
+| 21 | messages arrive hours late | MTK-3324 | ✅ |
+| 22 | flashlight turns on by itself in pocket | MTK-3518 | ✅ |
+| 23 | overnight charge only reached 60 percent | MTK-3694 | ✅ |
+| 24 | alarm shows but makes no sound | MTK-3457 | ✅ |
 
-The system is divided into three main stages:
+21/24 in the top 5; 20/24 at rank 1. The 3 misses are short vague queries
+(`bluetooth showing error`) where a sibling ticket outranks the labeled
+ones — broader candidates, not wrong answers. Latency is CPU-measured;
+a GPU or smaller rerank pool brings it under a second.
 
-1.  **Preprocessing:** Raw ticket data is cleaned, enriched, and transformed into a format suitable for our models.
-2.  **Transformation & Indexing:** The preprocessed text is converted into numerical representations (embeddings), and an efficient search index is built.
-3.  **Hybrid Search & Application:** A web application allows users to search for similar tickets using a two-stage hybrid search mechanism.
+## Screenshots
 
-### 1. Preprocessing (`preprocess.py`)
+Home:
 
-The heart of our preprocessing pipeline is the `AdaptiveMTKProcessor` class. This class is responsible for taking raw ticket data and transforming it into a feature-rich format.
+![App home](docs/app_home.png)
 
-**Key Steps:**
+Results for *"wifi switch got turned off"* — top hit is the exact ticket:
 
-- **Pattern Discovery:** The processor first analyzes the entire dataset to discover recurring patterns using **Regular Expressions (Regex)**.
-- **Keyword Extraction:** It uses TF-IDF to extract important keywords and then categorizes them using a zero-shot classification model from Hugging Face.
-- **Text Enrichment:** For each ticket, the title, description, and repeat steps are processed to extract the discovered patterns and keywords.
-- **`enhanced_text` Creation:** A new field, `enhanced_text`, is created for each ticket. This field is a concatenation of the processed text and special tokens representing the extracted features.
+![App results](docs/app_search.png)
 
-### 2. Transformation & Indexing (`transform.py`)
+## Adding tickets
 
-Once the data is preprocessed, we need to convert it into a format that our search system can understand.
+Use the **Add a New Ticket** form in the app: the ticket is cleaned,
+embedded, appended to the index (which expands itself), and saved to the
+CSV — searchable immediately, no rebuild.
 
-**Key Steps:**
+## Automation
 
-- **Embedding Generation:** We use a **bi-encoder** (`SentenceTransformer`) to convert the `enhanced_text` of each ticket into an embedding.
-- **HNSW Indexing:** We use `hnswlib` to build an HNSW index for fast similarity search.
-- **Artifact Storage:** The embeddings, DataFrame, HNSW index, and metadata are saved to the `models/` directory.
+`.github/workflows/build-index.yml` — every push touching tickets or
+pipeline code rebuilds preprocessing + embeddings + index on CI and
+publishes a versioned **Release** with all six artifact files. Download
+them into `models/` (plus the CSV) and the app serves the fresh index.
 
-### Scalability choices
+## Limits & next steps
 
-HNSW is an approximate nearest-neighbour graph. It does not compare a query
-with every ticket, so query latency stays practical as the ticket collection
-grows. This project uses these controls:
-
-- `M=16` controls graph connectivity. More links can improve recall but use
-  more memory.
-- `ef_construction=200` spends extra work while building the graph to improve
-  retrieval quality.
-- `ef` controls query-time accuracy versus latency. The app sets it to at
-  least the candidate pool size.
-- `--max-elements` reserves index capacity for newly added tickets. When that
-  capacity is reached, the app grows the index geometrically instead of
-  rebuilding it for every addition.
-
-For a production multi-user system, ticket writes should go through a single
-ingestion service or queue. The Streamlit add form is intended for a
-single-writer prototype; concurrent writes need a database and locking.
-
-### 3. Hybrid Search & Application (`app.py` and `main.py`)
-
-The final stage is the search itself, which is exposed through a Streamlit web application.
-
-**The Two-Stage Search Process:**
-
-1.  **Candidate Retrieval (Bi-encoder + HNSW):** The **bi-encoder** and HNSW index are used to quickly retrieve a set of candidate tickets.
-2.  **Re-ranking (Cross-encoder):** The candidates are then re-ranked using a **cross-encoder** for higher accuracy.
-
-**The Streamlit Application (`app.py`):**
-
-- The application provides a simple interface for searching and adding tickets.
-
-## ⚙️ How to Run
-
-1.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-2.  **Preprocess the data and build the index:**
-    ```bash
-    python preprocess.py --input mediatek_tickets.csv
-    python transform.py --max-elements 5000
-    ```
-
-    `--max-elements 5000` means the current index has room for up to 5,000
-    ticket vectors before it needs to grow. Choose this based on expected
-    growth and available memory.
-
-3.  **Run the Streamlit application:**
-    ```bash
-    streamlit run app.py
-    ```
-
-## ✨ Example
-
-Let's say a user enters the query: `"camera firmware timeout on ro.mediatek.platform"`
-
-1.  The query is encoded into an embedding by the **bi-encoder**.
-2.  The HNSW index quickly finds 50 tickets that are semantically similar to the query.
-3.  The **cross-encoder** then re-ranks these 50 candidates, comparing each one directly to the query.
-4.  The application displays the top 5 most similar tickets, along with their similarity scores.
+- Keyword buckets are sparse by design (classifier only keeps confident
+  calls) — embeddings carry retrieval quality.
+- Cross-encoder over 50 candidates sets CPU latency (~2 s); drop the pool
+  to 20–30 or add a GPU for interactive speed.
+- Next: persist learned patterns so fresh app instances clean queries
+  with the full pattern set; eval split held out from development queries.
