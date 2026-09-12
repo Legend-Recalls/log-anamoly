@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import hnswlib
 from sentence_transformers import SentenceTransformer, CrossEncoder
+from preprocess import AdaptiveMTKProcessor
 
 # —————————————————————————————
 # 1) LOAD EVERYTHING (once at startup)
@@ -12,6 +13,20 @@ bi_encoder = SentenceTransformer("all-mpnet-base-v2")
 
 # Cross‑encoder for re‑ranking
 cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+# Same cleaner the tickets went through
+processor = AdaptiveMTKProcessor()
+
+def clean_query(query):
+    # Same cleaning tickets get, so the query meets them in the same format.
+    title_proc = processor.preprocess_title_enhanced(query)
+    steps_proc = processor.preprocess_steps_enhanced(query)
+    desc_proc = processor.preprocess_description_enhanced([query])[0]
+    return processor.create_enhanced_features({
+        "title_processed": title_proc,
+        "steps_processed": steps_proc,
+        "desc_processed": desc_proc,
+    })
 
 # Ticket data + embeddings + HNSW index
 df     = pd.read_pickle("models/enhanced_tickets_df.pkl")
@@ -30,7 +45,9 @@ def search_with_cross_encoder(
     hnsw_k:     int = 50
 ) -> pd.DataFrame:
     # Step A: retrieve fast candidates (bi‑encoder + HNSW)
-    q_emb    = bi_encoder.encode([query], normalize_embeddings=True)
+    # Clean the query first so it looks like the tickets in the index.
+    search_text = clean_query(query)
+    q_emb    = bi_encoder.encode([search_text], normalize_embeddings=True)
     labels, dists = index.knn_query(q_emb, k=hnsw_k)
     cand_idxs = labels[0]
     

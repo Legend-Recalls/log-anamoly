@@ -301,3 +301,603 @@ MTK-3096,Critical Failure: rotation matrix - MTK Flag: ro.mediatek.platform,The 
 MTK-3097,Error: DEVMPU region fault - ro.product.board,The touchscreen module on ro.mediatek.platform encountered a multi-modal input fusion algorithm error during routine testing. Logs suggest a hardware exception.,enable developer mode → reboot device → flash firmware
 MTK-3098,MTK: MCUPM IPI timeout,The audio module on ro.board.platform encountered a spatial audio head tracking calibration failure during routine testing. Logs suggest a hardware exception.,run logcat → flash firmware → connect to adb
 MTK-3099,MTK Crash Log - display,The camera module on ro.mediatek.platform encountered a AI-powered scene optimization hang during routine testing. Logs suggest a hardware exception.,reboot device → connect to adb → enable developer mode
+MTK-3100,"UFS read errors on long video record","Recording 4K video for ten minutes throws ufs read retries on k689v1_64 board running ALPS.K2.MP1.V1.3, the file ends up corrupt. Smart report shows err_ufs_9102 with 0xF01A status.",run iostat → reboot to recovery → wipe cache
+MTK-3101,"Phone freezes copying big files","Copying a 3GB file to internal storage stalls at 90 percent on MT6896, the ufs link resets twice a minute. Kernel log shows UFSHCD timeout 0xF02B.",connect to adb → run iostat → reboot device
+MTK-3102,"App installs hang at 100 percent","Every Play Store install sticks at 100 percent on ro.product.board, package manager waits on storage. Dmesg keeps repeating err_ufs_9104.",wipe cache → reboot to recovery → retry install
+MTK-3103,"OTA sideload fails writing system","Sideloading the OTA aborts while writing system on Dimensity 9300, recovery reports a ufs write abort. Last line before failure is 0xF033.",free storage → reboot to recovery → sideload ota
+MTK-3104,"Gallery thumbnails never load","Thumbnails stay grey after every reboot on ro.board.platform, the fbo garbage collector looks stuck. Media scanner logs err_ufs_9104 twice.",wipe cache → reboot device → run logcat
+MTK-3105,"Cold boot takes six minutes","From power button to lock screen takes six minutes on k689v1_64, ufs init alone eats four. Boot log ends with err_ufs_9110.",enter bootloader → reflash preloader → reboot device
+MTK-3106,"Random reboots with full storage","Below 500MB free the phone reboots itself on ro.mediatek.platform, always during background dexopt. Crash reason is 0xF044.",free storage → wipe cache → reboot device
+MTK-3107,"Second user profile cannot be created","Adding a work profile fails instantly on MT6989 running ALPS.W0.MP.V1, user service crashes. Logcat shows err_ufs_9115.",factory reset → recreate profile → run logcat
+MTK-3108,"Encrypted files unreadable after update","Photos taken before the update open as grey blocks on ro.vendor.mediatek, the file key unwrap fails. Keymaster returns 0xF051.",reflash boot → reboot to recovery → run logcat
+MTK-3109,"Storage benchmark halved overnight","AndroBench sequential read dropped from 1800 to 800 MB/s on Dimensity 8300 with no new apps. Only clue is err_ufs_9120 in dmesg.",cool device → rerun benchmark → run logcat
+MTK-3110,"Netflix stuck at SD after update","Netflix maxes out at SD since the security patch on ro.product.board, the app says device not secure. Drm info shows ERR_DRM_3301, L1 gone.",check drm info → factory reset → reprovision keys
+MTK-3111,"Disney+ HDCP error on clean boot","Disney+ throws an HDCP error on first launch after every reboot on MT6896. Hdcp handshake log ends with 0xD302.",reboot device → check drm info → run logcat
+MTK-3112,"Downloaded shows refuse to play","Offline episodes fail with a license error on ro.board.platform even with valid rental. Keybox request returns ERR_DRM_3305.",clear app data → reprovision keys → reboot device
+MTK-3113,"Prime Video screen goes black","Audio plays but the picture is black in Prime Video on k689v1_64, screenshots come out black too. Secure path reports 0xD308.",toggle hdcp → update firmware → reboot device
+MTK-3114,"Widevine test app reports L3 only","The DRM test app shows L3 where L1 used to be on Dimensity 9300, nothing was flashed. Provisioning state reads ERR_DRM_3311.",factory reset → reprovision keys → check drm info
+MTK-3115,"Casting protected content fails","Casting Netflix to the TV errors out on ro.mediatek.platform while YouTube casts fine. Wvdrm session setup gives 0xD312.",reboot device → update firmware → run logcat
+MTK-3116,"Banking app says device not trusted","The banking app refuses login after relocking the bootloader on MT6989, verdict is basic only. Attestation plus drm state ERR_DRM_3317.",relock bootloader → factory reset → run logcat
+MTK-3117,"YouTube TV 4K option missing","YouTube TV tops out at 1080p on ro.product.board although the panel is 1440p. Cobalt logs mention 0xD31A.",check drm info → update firmware → reboot device
+MTK-3118,"Licenses wiped every single week","All streaming licenses vanish weekly on ro.board.platform and everything must redownload. License server replies ERR_DRM_3322.",reprovision keys → run logcat → flash firmware
+MTK-3119,"HBO Max buffers only in HDR","HBO Max stalls exclusively on HDR titles on Dimensity 8300, SDR plays fine. Playback session logs 0xD325.",clear app data → check drm info → reboot device
+MTK-3120,"Camera crashes the moment it opens","Every camera app dies on launch on MT6896, tombstone blames the hal. Dmesg shows avc denied for scontext=u:r:hal_camera.",pull dmesg → audit2allow → reflash boot
+MTK-3121,"Fingerprint enrollment denied","Adding a fingerprint fails at 30 percent on ro.mediatek.platform, the tee refuses the template. Audit log shows avc denied on fp_data.",pull dmesg → reflash boot → re-enroll finger
+MTK-3122,"Sensors stop after security patch","All sensors freeze ten minutes after boot on k689v1_64 running ALPS.K2.MP1.V1.3. Sensorservice is blocked by an avc denied rule.",pull dmesg → audit2allow → reboot device
+MTK-3123,"NFC payment denied at terminal","Tap to pay fails at every terminal on ro.product.board, the secure element never answers. Nfc stack logs avc denied twice.",pull dmesg → update firmware → run logcat
+MTK-3124,"Mic blocked in third-party apps","WhatsApp calls are silent while the dialer works on Dimensity 9300, permission is granted. Audio hal hits avc denied.",check permissions → pull dmesg → reboot device
+MTK-3125,"GPS daemon killed on boot","The gnss daemon dies seconds after boot on MT6989, location never starts. Init reports avc denied executing gnss_exec.",pull dmesg → reflash boot → open sky test
+MTK-3126,"Bluetooth share force closes","Sending any file over Bluetooth crashes sharing on ro.board.platform. Bluetooth service is stopped by avc denied.",clear bluetooth storage → pull dmesg → reboot device
+MTK-3127,"Vibrator silent after policy update","Haptics died right after the policy-only OTA on ro.vendor.mediatek. Vibrator service logs avc denied on access.",run vibrator test → pull dmesg → reflash boot
+MTK-3128,"Charging daemon restarts in loop","The charger daemon restarts every minute on MT6878 and the led blinks. Health hal is denied with avc denied.",pull dmesg → flash firmware → run logcat
+MTK-3129,"Logcat itself gets permission denied","Even logcat prints permission denied on this user build of ro.mediatek.platform. Adbd is confined by avc denied.",enable developer mode → pull dmesg → reboot device
+MTK-3130,"Phone reboots opening the camera","Opening the camera reboots the whole phone on MT6896, no warning at all. Last_kmsg ends in KE_camera_isp with an AEE_DB entry.",pull last_kmsg → flash firmware → run logcat
+MTK-3131,"Reboot loop after second SIM inserted","Inserting a second SIM bootloops the phone on Dimensity 8300, it never reaches setup. Modem dies with KE_modem_md1 and 0xC0050011.",remove sim2 → pull last_kmsg → flash firmware
+MTK-3132,"Dies when the screen turns off","Locking the screen reboots the phone half the time on k689v1_64. Suspend path panics in KE_display_esd.",pull last_kmsg → update firmware → run logcat
+MTK-3133,"Reboot during 5G speedtest","Two minutes into a speedtest the phone reboots on MT6989 and comes back on 4G. Thermal zone trips KE_npu_thermal.",cool device → pull last_kmsg → flash firmware
+MTK-3134,"Reboot while charging overnight","Found the phone rebooted every morning on ro.product.board, always around 4am. Charger driver logged KE_pd_phy first.",try 65w charger → pull last_kmsg → flash firmware
+MTK-3135,"Panic on incoming VoLTE call","Answering a VoLTE call reboots the phone on ro.vendor.mediatek, normal calls are fine. Rtp path hits KE_ims_rtp.",toggle volte → pull last_kmsg → flash firmware
+MTK-3136,"Crash taking night-mode photo","Night mode crashes the camera daemon on Dimensity 9300 and takes the system down. Queue overflow logged as KEISP_que with AEE_DB and 0xC0050021.",pull last_kmsg → update camera fw → run logcat
+MTK-3137,"Reboot plugging in USB-C dock","Docking the phone reboots it on MT6878, the monitor never gets a signal. Type-C controller raised KE_usb_pd.",inspect port → pull last_kmsg → flash firmware
+MTK-3138,"Dies rotating the phone fast","Shaking or spinning the phone reboots it on ro.board.platform, gentle use is fine. Sensor hub firmware threw KE_sensor_hub.",run sensor test → pull last_kmsg → flash firmware
+MTK-3139,"Panic exactly every 24 hours","The phone reboots once a day at the same hour on ALPS.K2.MP1.V1.3, uptime never passes 24h. Watchdog bark logged as KE_wdt_bark.",check watchdog log → pull last_kmsg → flash firmware
+MTK-3140,"Freezes then reboots after 30 seconds","The screen freezes solid then the phone resets on MT6896, every single time. AuWDT fired with wdt_timeout in the logs.",check watchdog log → reboot device → flash firmware
+MTK-3141,"Watchdog reset during long gaming","An hour of gaming ends in a sudden reboot on Dimensity 9300, the phone is warm but not hot. Smp stall logged with 0x9041.",cool device → check watchdog log → reboot device
+MTK-3142,"Mobile data resets itself daily","Data drops and returns once a day on ro.mediatek.platform with a silent modem restart. Modem watchdog md_wdt barked.",toggle airplane → check watchdog log → flash firmware
+MTK-3143,"Maps navigation hangs the GPU","Ten minutes of navigation freezes the map on MT6989 then reboots. Gpu hang confirmed by 0x9044 before the reset.",clear cache → check watchdog log → reboot device
+MTK-3144,"Sleep of death needs hard reset","Overnight the phone will not wake on k689v1_64, only power+vol-up revives it. Spm watchdog spm_wdt never released suspend.",hold power 10s → check watchdog log → flash firmware
+MTK-3145,"Watchdog bark in slow-motion video","Recording 960fps slow-mo reboots the phone on Dimensity 8300 after 20 seconds. Isp stall logged with 0x9047.",update camera fw → check watchdog log → reboot device
+MTK-3146,"Reboots in pocket within an hour","Carrying the phone in a pocket reboots it on ro.product.board, desk use is fine. Sar plus wdt fired together.",remove case → check watchdog log → calibrate
+MTK-3147,"Watchdog fires only on 5G","Everything is stable on 4G but 5G reboots hourly on MT6878. Nr watchdog nr_wdt is the only trace.",lock 4g → check watchdog log → flash firmware
+MTK-3148,"Bootloader watchdog after failed OTA","A failed update left the phone resetting in fastboot on ro.board.platform. Bootloader watchdog logged 0x9050.",enter bootloader → sideload ota → reboot device
+MTK-3149,"Hourly kicks drain the battery","Battery drops 5 percent an hour idle on ro.vendor.mediatek with the screen off. Watchdog kicks hourly in batterystats.",run batterystats → check watchdog log → flash firmware
+MTK-3150,"eSIM download stalls at 80 percent","Adding the carrier QR code stalls at 80 percent on MT6896 and never finishes. Euicc download ends with ERR_ESIM_4407 and 0x2B11.",toggle airplane → reprovision esim → reboot device
+MTK-3151,"Second line drops after reboot","The eSIM line vanishes on every reboot on Dimensity 9300 and must be toggled back. Profile attach fails silently.",reprovision esim → toggle airplane → run logcat
+MTK-3152,"QR activation says already in use","The carrier QR errors as already-used on a brand new eSIM on ro.product.board. Euicc reports the eid locked.",contact carrier → reset euicc → reboot device
+MTK-3153,"Data dies switching SIMs","Switching data from SIM1 to eSIM kills all data on MT6989 until reboot. Dsda handover logged 0x2B14.",toggle airplane → reboot device → run logcat
+MTK-3154,"Roaming never attaches on eSIM","Abroad the eSIM shows bars but no data on k689v1_64, physical SIMs roam fine. Attach rejected with ERR_ESIM_4417.",check apn → toggle airplane → reboot device
+MTK-3155,"eSIM vanished after factory reset","The eSIM profile is gone after a reset on ro.board.platform although erase-esim was off. No profile listed at all.",restore backup → reprovision esim → reboot device
+MTK-3156,"Calls work but no mobile data","Voice calls go through yet data is dead on the eSIM on MT6878, apn looks right. Bearer setup returns 0x2B20.",check apn → toggle airplane → run logcat
+MTK-3157,"Carrier app cannot find the eSIM","The carrier app says no eSIM present on Dimensity 8300 while settings shows it. App query gets ERR_ESIM_4423.",update carrier app → reprovision esim → reboot device
+MTK-3158,"Dual SIM standby eats the battery","Two active SIMs drain 15 percent overnight idle on ro.mediatek.platform, one SIM is fine. Modem never sleeps per batterystats.",disable sim2 → run batterystats → reboot device
+MTK-3159,"Number transfer fails with error 8","Porting the number to eSIM fails at the last step on ro.vendor.mediatek. Activation server replied 0x2B27.",contact carrier → reboot device → run logcat
+MTK-3160,"No vibration on incoming calls","Calls ring silently with zero vibration on MT6896 although haptics test buzzes. Driver drv2624 probe logged ERR_HAPTIC_2205.",run vibrator test → reboot device → run logcat
+MTK-3161,"Keyboard haptics feel mushy","Keypress buzz feels weak and late on Dimensity 9300 after the update. Strength reads 0x0A09 instead of the old value.",adjust intensity → run vibrator test → reboot device
+MTK-3162,"Haptics stop after ten minutes","Vibration dies ten minutes into use on MT6989 and returns after reboot. Driver overheats per ERR_HAPTIC_2211.",cool device → run vibrator test → reboot device
+MTK-3163,"Alarm vibrates but calls don't","The alarm shakes the phone yet incoming calls do not on ro.product.board. Call path mute is stuck on.",check dnd → run vibrator test → reboot device
+MTK-3164,"Gaming trigger stuck buzzing","A racing game leaves the motor buzzing after exit on k689v1_64 until force stop. Stuck effect id 0x0A15.",force stop game → run vibrator test → reboot device
+MTK-3165,"Vibration rattles the camera","Strong buzz makes an audible rattle near the camera on Dimensity 8300. Loose motor mount suspected with ERR_HAPTIC_2218.",tap test → run vibrator test → flash firmware
+MTK-3166,"Haptic feedback delayed half a second","Every tap buzzes noticeably late on MT6878, typing feels disconnected. Latency measured 0x0A1C ms-scale.",enable developer mode → run vibrator test → run logcat
+MTK-3167,"Only left side buzzes in landscape","Landscape gaming buzzes on one side only on ro.board.platform. Effect routing table looks wrong.",run vibrator test → update firmware → reboot device
+MTK-3168,"Vibration too weak even at max","Max intensity feels like a whisper on ro.mediatek.platform. Calibration reads ERR_HAPTIC_2225.",set max intensity → run vibrator test → reboot device
+MTK-3169,"Phone buzzes nonstop until reboot","The motor latches on full power randomly on MT6896 until a reboot. Latch state 0x0A28 in the driver log.",hold power 10s → run vibrator test → flash firmware
+MTK-3170,"Flash tool stuck at red bar","SP Flash Tool freezes on the red bar at 0 percent on k689v1_64, then times out. Tool reports S_FT_DOWNLOAD_FAIL 4008 with 0xC0050003.",install vcom driver → hold vol-down → retry flash
+MTK-3171,"DRAM check fails in flash tool","The flash tool fails the memory test on MT6989 before writing anything. Error is S_FT_ENABLE_DRAM_FAIL 4032.",change usb port → hold vol-down → retry flash
+MTK-3172,"Scatter file rejected by new tool","The latest tool rejects the scatter file that worked last month on MT6878. Parser throws S_FT_INVALID_ADDR with 0xC0050008.",download matching rom → hold vol-down → retry flash
+MTK-3173,"Preloader flash ends black","Flashing preloader turned the phone fully dead on Dimensity 8300, no vibration even. Da got no response: S_FT_DA_NO_RESPONSE 4001.",hold all buttons 20s → retry flash → run logcat
+MTK-3174,"Auth file error on secure device","Flashing a secure-boot phone fails auth on MT6896. Tool demands an auth file: S_FT_AUTH_FAIL 0xC0050009.",load auth file → hold vol-down → retry flash
+MTK-3175,"USB drops mid-flash at 60 percent","The usb device vanishes halfway through flashing on ro.product.board. Port reset logged S_FT_USB_TIMEOUT 0xC0050012.",change usb port → use usb2 hub → retry flash
+MTK-3176,"Skipped backup lost the IMEI","The nvram backup step was skipped and now both IMEIs are gone on MT6989. Nvram write gave ERR_NV_1001.",backup nvram → retry flash → restore imei
+MTK-3177,"Format-all wiped sensor calibration","Format-all plus download erased proximity calibration on k689v1_64. Sensors now read constant zero.",backup nvram → retry flash → recalibrate sensors
+MTK-3178,"Tool says chip mismatch","The tool refuses, claiming MT6896 vs MT6989 mismatch on a Dimensity 9300 unit. Chip id check S_CHIP_MISMATCH failed.",download matching rom → verify chip → retry flash
+MTK-3179,"Linux tool cannot see the phone","The Linux flash tool lists no device on Ubuntu while lsusb shows it on MT6878. Missing udev rule suspected.",add udev rule → hold vol-down → retry flash
+MTK-3180,"WiFi and Bluetooth die together","Both radios went silent at once on MT6896 and toggles do nothing. Combo firmware conninfra_fw crashed with ERR_CONN_7710 and 0xC01A.",toggle wifi → clear cache → reboot device
+MTK-3181,"Bluetooth stutters when WiFi busy","Audio cuts out whenever downloading on Dimensity 9300. Coexistence table logged ERR_CONN_7713.",toggle wifi → unpair device → reboot device
+MTK-3182,"Hotspot turns itself off","The hotspot disables minutes after enabling on ro.product.board with devices connected. Tether daemon got 0xC01D.",reset network settings → reboot device → run logcat
+MTK-3183,"WiFi MAC is all zeros","MAC shows 02:00:00:00:00:00 on k689v1_64 after the update. Nvram wifi block reads ERR_CONN_7719.",restore nvram → reboot device → run logcat
+MTK-3184,"5GHz networks invisible","Only 2.4GHz networks appear on MT6989, 5GHz vanished overnight. Band capability reports 0xC022.",forget network → toggle wifi → reboot device
+MTK-3185,"Captive portal login never opens","Hotel wifi connects but the login page never pops on ro.board.platform. Portal detect times out silently.",forget network → toggle wifi → run logcat
+MTK-3186,"WiFi calling drops every call","Calls over wifi drop at exactly 5 minutes on Dimensity 8300, VoLTE calls hold. Wfc keepalive gave ERR_CONN_7726.",toggle volte → toggle wifi → reboot device
+MTK-3187,"Screen mirroring lags badly","Miracast to the TV lags two seconds on MT6878, direct wifi is fast. Wfd session logged 0xC029.",reboot tv → toggle wifi → run logcat
+MTK-3188,"Phone-to-phone share fails","Direct share between two MTK phones never connects on ro.mediatek.platform. P2p group formation timed out.",toggle wifi → reboot both → run logcat
+MTK-3189,"Airplane toggle leaves WiFi half-on","Toggling airplane mode leaves the wifi icon ghosted on ro.vendor.mediatek. State machine stuck at ERR_CONN_7732.",toggle airplane → reboot device → run logcat
+MTK-3190,"6GHz network never appears","The 6GHz ssid never shows in scans on Dimensity 9300 though the router broadcasts it. Scan table missing 6ghz with ERR_WIFI6_7714 and 0x6E02.",forget network → toggle wifi → run logcat
+MTK-3191,"320MHz falls back to 80","Link negotiates 320MHz then drops to 80 within seconds on MT6989. Bandwidth switch logged without error.",set auto channel → toggle wifi → reboot device
+MTK-3192,"MLO drops the second band","Multi-link connects then loses one band on k689v1_64. Second link teardown shows ERR_WIFI6_7719.",forget network → reboot router → reboot device
+MTK-3193,"WPA3 rejects correct password","The right password fails on WPA3-SAE on ro.product.board, WPA2 works. Handshake ends with 0x6E22.",forget network → re-enter password → run logcat
+MTK-3194,"Speed halves on WiFi 7 router","Throughput is half of the old phone on the same WiFi 7 router on MT6878. Rate control looks stuck.",toggle wifi → update firmware → run logcat
+MTK-3195,"Mesh roaming drops the call","Walking between mesh nodes drops VoWiFi calls on Dimensity 8300. Roam event logged ERR_WIFI6_7727.",forget network → toggle wifi → reboot device
+MTK-3196,"6GHz works only next to router","6GHz connects within a meter of the router on MT6896 and dies beyond that. Sar backoff suspected.",remove case → toggle wifi → run logcat
+MTK-3197,"Hotspot 6GHz invisible to laptop","The phone hotspot on 6GHz never appears on the laptop on ro.board.platform. Softap beacon missing, 0x6E32.",reset network settings → reboot device → run logcat
+MTK-3198,"WiFi turns off overnight","WiFi is off every morning on ro.vendor.mediatek despite never touching it. Doze killed it for battery.",disable battery optimization → toggle wifi → reboot device
+MTK-3199,"Passpoint auto-join loops login","Office passpoint network loops the login page forever on Dimensity 9300. Eap state stuck at ERR_WIFI6_7739.",forget network → disable auto-join → reboot device
+MTK-3200,"LE earbuds stutter on walks","Music cuts out every block on the walk on MT6896 with LE earbuds. Auracast link logged ERR_BLE_7721 with 0x8EA4.",unpair device → clear bluetooth storage → re-pair
+MTK-3201,"Auracast broadcast never found","The airport broadcast never appears on Dimensity 9300 while other phones see it. Scan logged nothing at all.",rescan broadcasts → clear bluetooth storage → reboot device
+MTK-3202,"Watch disconnects every night","The watch unpairs itself overnight on ro.product.board and must be re-added daily. Link supervision gave ERR_BLE_7726.",disable battery optimization → re-pair → reboot device
+MTK-3203,"Car stereo pairs but no sound","The car pairs fine but no audio comes out on MT6989, calls route to the earpiece. A2dp setup ended with 0x8EA9.",unpair device → re-pair → run logcat
+MTK-3204,"Two phones fight over speaker","Two paired phones keep stealing the speaker from each other on k689v1_64. Last-connected wins every minute.",unpair device → rename device → re-pair
+MTK-3205,"Hearing aids drop in calls","Hearing aids cut out mid-call on ro.board.platform, media streaming is fine. Asha link logged ERR_BLE_7733.",re-pair → toggle volte → run logcat
+MTK-3206,"Tracker out of range at 3 meters","The tag shows away while sitting on the desk on Dimensity 8300. Rssi collapses past 3m with 0x8E37.",remove case → re-pair → run logcat
+MTK-3207,"Gamepad lags a full second","Button presses land a second late on MT6878, unplayable for action games. Connection interval stuck high.",unpair device → enable game mode → re-pair
+MTK-3208,"Exposure app drains the battery","The tracing app kept ble scanning all day on ro.mediatek.platform and ate 20 percent. Scan duty never throttled.",restrict background → reboot device → run logcat
+MTK-3209,"Watch transfer stalls halfway","Sending the watch face stalls at half on k689v1_64 every try. Gatt write got ERR_BLE_7741.",keep screen on → re-pair → run logcat
+MTK-3210,"Maps spins in circles downtown","Navigation spins between blocks downtown on MT6896, open road is fine. Multipath flagged with ERR_GNSS_5509.",open sky test → clear agps → reboot device
+MTK-3211,"Cold start takes 12 minutes","First fix of the day takes twelve minutes on Dimensity 9300. Ephemeris download crawls with 0x6752.",clear agps → open sky test → run logcat
+MTK-3212,"Altitude reads 200m too high","Hiking elevation is consistently 200m high on MT6989 versus a dedicated unit. Baro fusion disagrees.",calibrate baro → open sky test → run logcat
+MTK-3213,"Running track cuts corners","Recorded runs cut every corner on ro.product.board, distance reads short. Duty cycling logged ERR_GNSS_5515.",set high accuracy → open sky test → run logcat
+MTK-3214,"No satellites indoors by window","Zero satellites even by the window on k689v1_64 where the old phone saw six. Antenna path suspected.",open sky test → clear agps → run logcat
+MTK-3215,"Compass and GPS disagree","Compass points north while movement shows east on Dimensity 8300. Fusion offset 0x6760.",figure-8 calibrate → open sky test → run logcat
+MTK-3216,"Dual-frequency L5 never locks","L1 locks but L5 never does on MT6878, accuracy stays at 5m. L5 search logged ERR_GNSS_5521.",open sky test → update firmware → run logcat
+MTK-3217,"Location jumps to wrong city","The blue dot teleports to another city on ro.board.platform then snaps back. Supl response was stale.",clear agps → reboot device → run logcat
+MTK-3218,"Emergency call has no location","Test emergency call showed no location on ro.vendor.mediatek. Lbs query never fired.",enable location → open sky test → run logcat
+MTK-3219,"GPS clock off by a whole day","Timestamps from gps are a day behind on MT6896 after the week rollover. Receiver logged ERR_GNSS_5528.",set auto time → open sky test → reboot device
+MTK-3220,"65W charger only gives 10W","The bundled 65W brick charges at 10W on Dimensity 9300, cable is original. Pd contract falls back, ERR_PD_6603.",try 65w charger → inspect port → run logcat
+MTK-3221,"Charging stops at 80 percent","Charge halts at 80 and never resumes on MT6989 although smart-charge is off. Battery care flag stuck.",disable smart charge → reboot device → run logcat
+MTK-3222,"Phone pauses charge when warm","Charging pauses above 38 degrees on k689v1_64 and crawls after. Jeita table kicked in with 0x0E07.",cool device → try 65w charger → run logcat
+MTK-3223,"Wireless charging loops on-off","The pad connects and drops every few seconds on ro.product.board. Alignment coil reports marginal.",recenter phone → remove case → run logcat
+MTK-3224,"Reverse charge shuts off fast","Powering earbuds from the phone stops after seconds on Dimensity 8300. Otg boost logged ERR_PD_6612.",enable otg → try cable → reboot device
+MTK-3225,"Car charger reboots the phone","Plugging the car charger reboots the phone on MT6878, wall chargers are fine. Line noise tripped 0x0E15.",try 65w charger → inspect port → run logcat
+MTK-3226,"Port works one way up only","The cable charges only inserted one direction on ro.board.platform. Cc pin reads open.",inspect port → clean lint → run logcat
+MTK-3227,"Battery jumps from 20 to zero","Percentage collapses from 20 straight to dead on MT6896. Fuel gauge logged ERR_FG_6620.",calibrate battery → reboot to recovery → run logcat
+MTK-3228,"Overnight charge never finishes","Still 92 percent after a full night on ro.vendor.mediatek. Trickle phase never completes.",disable smart charge → reboot device → run logcat
+MTK-3229,"Moisture warning with dry cable","A dry third-party cable triggers the moisture warning on Dimensity 9300. Detection threshold 0x0E23.",dry port → try cable → run logcat
+MTK-3230,"Screen flickers at 120Hz in bed","Low brightness plus 120Hz flickers visibly on MT6989, 60Hz is clean. Pwm table flagged ERR_PANEL_1108 with 0x1D4E.",set 60hz → update firmware → run logcat
+MTK-3231,"Green tint in dark mode","Dark greys look greenish on k689v1_64 at night. Gamma curve suspected.",set 60hz → calibrate display → run logcat
+MTK-3232,"Refresh stuck at 60 after gaming","Exiting games leaves the phone at 60Hz on Dimensity 8300 until reboot. Switch daemon logged ERR_PANEL_1113.",kill game → set 120hz → reboot device
+MTK-3233,"Status bar burned in already","Ghost of the status bar visible on grey screens after 3 months on ro.product.board. Oled wear early.",hide status bar → set 60hz → run logcat
+MTK-3234,"Auto brightness pumps up and down","Brightness breathes every few seconds indoors on MT6878. Als readings oscillate around 0x1D50.",cover sensor → calibrate → reboot device
+MTK-3235,"Touch lags only at 120Hz","Touches feel late exclusively at 120Hz on Dimensity 9300, 60Hz is instant. Reported alongside touch lag.",set 60hz → run touch test → run logcat
+MTK-3236,"HDR video looks washed out","HDR titles look grey and flat on MT6896, SDR is punchy. Tone mapping logged ERR_PANEL_1119.",toggle hdr → update firmware → run logcat
+MTK-3237,"Always-on display eats 8 percent","AOD alone drains 8 percent overnight on ro.board.platform. Refresh never idles.",disable aod → set 60hz → reboot device
+MTK-3238,"Screen wakes itself in pocket","The screen wakes repeatedly in a pocket on ro.vendor.mediatek. Wake reason 0x1D60.",disable lift-wake → reboot device → run logcat
+MTK-3239,"Dead strip near the notch","A strip by the notch ignores taps on Dimensity 8300. Panel edge bonding suspected.",run touch test → update firmware → run logcat
+MTK-3240,"Ghost touches while charging","The screen taps itself only while charging on MT6989, fine on battery. Grounding issue with ERR_TOUCH_1112 and 0x70C4.",ground device → run touch test → flash firmware
+MTK-3241,"Keyboard types double letters","Every third letter doubles on k689v1_64, making typing painful. Debounce table suspected.",run touch test → clear cache → reboot device
+MTK-3242,"Edge swipes trigger alone","Edge gestures fire with the phone untouched on Dimensity 9300. Palm zone too wide.",disable edge panel → run touch test → reboot device
+MTK-3243,"Wet hands kill the touchscreen","Damp fingers stop all input on ro.product.board. Water rejection logged 0x70C9.",dry screen → run touch test → run logcat
+MTK-3244,"Pinch zoom jumps wildly","Pinch zooms to random levels on MT6878. Two-finger tracking loses an id.",run touch test → update firmware → reboot device
+MTK-3245,"Glove mode never engages","Glove mode toggle does nothing on ro.board.platform in winter. Sensitivity stuck with ERR_TOUCH_1118.",enable glove mode → run touch test → reboot device
+MTK-3246,"Palm ruins note writing","Resting the palm draws stray lines on Dimensity 8300 with the stylus. Rejection never engages.",enable palm reject → run touch test → run logcat
+MTK-3247,"Status bar pulls down in pocket","The shade opens by itself in pockets on MT6896. Accidental touch guard logged 0x70D5.",disable lift-wake → lock screen → reboot device
+MTK-3248,"Touch dead after every call","The screen ignores taps for a minute after calls on ro.vendor.mediatek. Proximity stuck near.",clean sensor → run touch test → reboot device
+MTK-3249,"One corner ignores all taps","Bottom-right corner never responds on Dimensity 9300. Grid test shows ERR_TOUCH_1124.",run touch test → flash firmware → run logcat
+MTK-3250,"Racing games pull left alone","Karts steer left untouched on MT6896, calibration never sticks. Gyro bias logged ERR_GYRO_5514 with 0x6790.",figure-8 calibrate → clear cache → reboot device
+MTK-3251,"Panorama tilts the horizon","Panoramas come out tilted on Dimensity 8300 though held level. Horizon fusion drifts.",figure-8 calibrate → run sensor test → run logcat
+MTK-3252,"VR headset drifts in minutes","VR view rotates away within minutes on MT6989. Yaw integration runs off.",figure-8 calibrate → cool device → run logcat
+MTK-3253,"Step counter adds ghost steps","Hundreds of steps counted while desk-bound on ro.product.board. Threshold too low, ERR_GYRO_5520.",calibrate → reboot device → run logcat
+MTK-3254,"Auto-rotate stuck landscape","Rotation locks in landscape on k689v1_64 until reboot. Orientation daemon logged 0x6795.",toggle rotate → figure-8 calibrate → reboot device
+MTK-3255,"Stabilization fights itself","Video shimmers as OIS and EIS disagree on Dimensity 9300. Fusion loop suspected.",disable eis → update camera fw → run logcat
+MTK-3256,"Compass spins on car mount","The compass rotates wildly on the magnetic mount on MT6878. Magnetometer saturated.",move from magnet → figure-8 calibrate → run logcat
+MTK-3257,"Shake flashlight fires randomly","The flashlight toggles on every brisk walk on ro.board.platform. Gesture threshold logged ERR_GYRO_5527.",lower sensitivity → figure-8 calibrate → reboot device
+MTK-3258,"Level app off by 3 degrees","The level reads 3 degrees off on a flat table on Dimensity 8300. Offset register 0x67A0.",calibrate on table → run sensor test → run logcat
+MTK-3259,"Gyro dead after a drop","Rotation stopped entirely after a waist-high drop on MT6896. Mems element suspected cracked.",run sensor test → flash firmware → run logcat
+MTK-3260,"Altitude frozen at 1013 hPa","Pressure never moves from 1013 on MT6989, hikes record flat lines. LPS22 driver logged ERR_BARO_5517 with 0x8A90.",run sensor test → reboot device → flash firmware
+MTK-3261,"Elevation wrong on every hike","Recorded elevation is off by hundreds of meters on Dimensity 8300. Sea-level reference never updates.",calibrate baro → run sensor test → run logcat
+MTK-3262,"Floor counting never advances","Stair climbs never register floors on ro.product.board. Pressure delta too small to trip.",calibrate baro → reboot device → run logcat
+MTK-3263,"Storm alert never fired","A pressure-drop storm warning never triggered on k689v1_64. Alert daemon logged ERR_BARO_5523.",enable alerts → run sensor test → reboot device
+MTK-3264,"Baro flatlines in airplane mode","Pressure freezes the moment airplane mode goes on on MT6878. Sensor hub gating suspected.",disable airplane → run sensor test → run logcat
+MTK-3265,"Elevation track is pure noise","Hike profiles look like saw teeth on Dimensity 9300. Raw noise around 0x8A99.",smooth track → run sensor test → run logcat
+MTK-3266,"Baro dies when phone warms up","Pressure freezes once the phone gets warm on MT6896 and returns when cool. Thermal drift.",cool device → run sensor test → run logcat
+MTK-3267,"Two phones disagree by 10 meters","Side by side the two units differ by 10m elevation on ro.board.platform. Factory offset logged ERR_BARO_5531.",calibrate baro → run sensor test → reboot device
+MTK-3268,"Pressure spikes pressing case","Squeezing the case spikes the reading on Dimensity 8300. Vent hole blocked.",remove case → run sensor test → run logcat
+MTK-3269,"Diagnostics list no barometer","The diagnostics app shows no barometer on MT6989 though specced. Hal never registers, 0x8AA0.",update firmware → run sensor test → flash firmware
+MTK-3270,"Signal drops holding the phone","Bars fall the moment it is gripped on MT6896, back on the table they return. Sar sensor sx933x logged ERR_SAR_5519.",remove case → run sensor test → calibrate
+MTK-3271,"Table triggers in-hand mode","Lying on a wooden table it thinks it is held on Dimensity 9300. Capacitance baseline drifted.",update firmware → run sensor test → calibrate
+MTK-3272,"Tight grip halves 5G speed","Speed halves gripped firmly on k689v1_64, loose hold is full speed. Antenna detune.",loosen grip → remove case → run logcat
+MTK-3273,"Proximity stuck near on table","The proximity reads near sitting on a table on ro.product.board. Offset register 0x5A40.",clean sensor → run sensor test → reboot device
+MTK-3274,"Screen stays on during calls","The display never turns off on calls on MT6878 and the cheek mutes people. Sensor blind.",clean sensor → remove case → run logcat
+MTK-3275,"SAR fails the lab retest","Certification retest failed radiated power on Dimensity 8300. Backoff table flagged ERR_SAR_5525.",flash lab fw → run sensor test → run logcat
+MTK-3276,"Metal bumper kills WiFi","The metal bumper drops WiFi to unusable on MT6989, plastic is fine. Antenna shorted.",remove case → toggle wifi → run logcat
+MTK-3277,"Left-hand grip drops two bars","Holding left-handed loses two bars on ro.board.platform, right hand is fine. Antenna position logged 0x5A50.",rotate phone → remove case → run logcat
+MTK-3278,"Wireless charger trips the sensor","Dropping it on the pad triggers in-hand mode on Dimensity 9300. Coil field couples in.",recenter phone → remove case → run logcat
+MTK-3279,"SAR calibration lost in update","The update wiped sar calibration on MT6896, signal behavior changed. Recalibration requested ERR_SAR_5532.",calibrate → run sensor test → reboot device
+MTK-3280,"Warm reboot fails memory check","Restarting warm always fails the memory check on MT6989, cold boot passes. DDR training logged ERR_DDR_8801 with EMI code 0xD0D0.",enter bootloader → reflash preloader → run logcat
+MTK-3281,"12GB model shows 8GB usable","Settings reports 8GB on a 12GB unit on k689v1_64. Carveout reserved wrong.",enter bootloader → check variant → flash firmware
+MTK-3282,"Games die to low-memory killer","Heavy games get killed minutes in on Dimensity 8300 with free ram showing. Lmk threshold 0xD088.",close background → cool device → run logcat
+MTK-3283,"Apps redraw, swap never engages","Every app restarts on return on MT6878, zram stays at zero. Swap never enabled.",enable zram → reboot device → run logcat
+MTK-3284,"MPU violation in modem domain","Reboot with emi mpu violation on ro.mediatek.platform during calls. Kernel logged KE_emi_mpu and 0xE001.",pull last_kmsg → flash firmware → run logcat
+MTK-3285,"Memory test fails bank one","The built-in memtest fails bank 1 on Dimensity 9300. Hardware fault ERR_DDR_8812.",enter bootloader → run memtest → flash firmware
+MTK-3286,"Video encode corrupts frames","Recorded video has green blocks on MT6896, playback of files is fine. Iommu fault 0xD0F0 during encode.",update firmware → cool device → run logcat
+MTK-3287,"Second SIM slot faults memory","Inserting SIM2 causes an mpu fault on ro.product.board, SIM1 alone fine. Domain setup suspected.",remove sim2 → pull last_kmsg → flash firmware
+MTK-3288,"Camera denied contiguous memory","4K recording fails for lack of contiguous memory on Dimensity 8300. Cma pool logged ERR_DDR_8820.",update camera fw → reboot device → run logcat
+MTK-3289,"Suspend drains 15 percent nightly","Fifteen percent vanishes overnight idle on MT6989. Spm sleep aborted repeatedly.",run batterystats → flash firmware → reboot device
+MTK-3290,"Hey Google never wakes it","The hotword never wakes the phone on MT6896, button assistant works. Vow dsp logged ERR_VOW_2250.",retrain voice model → reboot device → run logcat
+MTK-3291,"TV voices wake the phone","Commercials keep waking the phone on Dimensity 9300. False accept rate high.",retrain voice model → lower sensitivity → run logcat
+MTK-3292,"Hotword works only unlocked","The hotword works unlocked but never on the lockscreen on ro.product.board. Keyguard path code 0x0010.",retrain voice model → check settings → reboot device
+MTK-3293,"Voice retraining crashes","Retraining the voice model crashes settings on k689v1_64. Model trainer logged ERR_VOW_2257.",clear cache → retrain voice model → reboot device
+MTK-3294,"Assistant hears but never answers","The dots animate yet no answer ever comes on MT6878. Pipeline stall suspected.",retrain voice model → run logcat → flash firmware
+MTK-3295,"Two assistants answer at once","Both assistants reply to one hotword on ro.board.platform. Routing id 0x0020 duplicated.",disable one → retrain voice model → reboot device
+MTK-3296,"Hotword died after language change","Switching language killed hotword on Dimensity 8300. Model pack missing.",retrain voice model → reboot device → run logcat
+MTK-3297,"Whispers trigger full replies","Whispered speech gets loud full answers at night on MT6989. Gain stage logged ERR_VOW_2265.",retrain voice model → run logcat → reboot device
+MTK-3298,"Voice unlock fails with a mask","Masked face plus voice never unlocks on ro.vendor.mediatek. Score fusion too strict.",re-enroll voice → retrain voice model → reboot device
+MTK-3299,"Hotword chip never sleeps","The dsp stays awake and drains 6 percent overnight on Dimensity 9300. Idle state 0x0030 never reached.",disable hotword → run batterystats → reboot device
+MTK-3300,"Callers hear their own echo","Every caller hears themselves back on MT6896, normal mic mode. Aec filter logged ERR_AEC_2260.",toggle volte → test call → run logcat
+MTK-3301,"Speakerphone howls in small rooms","Small rooms make speakerphone howl on Dimensity 9300. Loop gain code 0xAEC2.",lower volume → test call → run logcat
+MTK-3302,"Bluetooth headset echoes on LTE","Headset calls echo while phone-earpiece calls are clean on ro.product.board. Sco path suspected.",unpair device → toggle volte → test call
+MTK-3303,"Voice cuts out mid-sentence","Words vanish mid-sentence on MT6989 as if gated. Vad aggressiveness logged ERR_AEC_2266.",test call → toggle volte → run logcat
+MTK-3304,"Quiet speech gets eaten","Soft-spoken callers are inaudible on k689v1_64, loud ones fine. Noise reduction overworks.",disable nr → test call → run logcat
+MTK-3305,"Second mic records nothing","Stereo videos have one dead channel on Dimensity 8300. Mic2 bias reads 0xAEC9.",run mic test → test call → flash firmware
+MTK-3306,"Wired mic far too quiet","The bundled headset mic is whisper-quiet on MT6878, another headset is fine. Impedance detect off.",try cable → test call → run logcat
+MTK-3307,"Echo only on speaker plus 5G","Echo appears solely on speakerphone over 5G on ro.board.platform. Delay flagged ERR_AEC_2273.",lock 4g → test call → run logcat
+MTK-3308,"Hearing-aid mode hisses","HAC mode hisses loudly on ro.vendor.mediatek, normal mode clean. Coil drive suspected.",enable hac → test call → run logcat
+MTK-3309,"Call recording is one-sided","Recordings capture only the caller on Dimensity 9300. Downlink tap logged 0xAEC7.",check region law → test call → run logcat
+MTK-3310,"5G icon shows but speed is 4G","Full 5G icon yet 40 Mbps on MT6989 where another phone does 600. Endc bearer missing, ERR_NR_4415.",toggle airplane → lock 4g → retest 5g
+MTK-3311,"SCG addition fails downtown","Second carrier never adds downtown on k689v1_64. Scg failure repeats.",toggle airplane → retest 5g → run logcat
+MTK-3312,"Upload stuck under 5 Mbps on NR","Downloads fly but uploads crawl on Dimensity 8300. Uplink grant starved with 0x5A12.",retest 5g → toggle airplane → run logcat
+MTK-3313,"mmWave camping overheats phone","Standing near mmWave the phone gets hot fast on MT6896. Thermal backoff never engages.",lock sub6 → cool device → run logcat
+MTK-3314,"Drops to 3G inside malls","Every mall visit drops to 3G on ro.product.board. Reselection logged ERR_NR_4422.",toggle airplane → retest 5g → run logcat
+MTK-3315,"Dual 5G standby kills idle battery","Two 5G SIMs drain 12 percent overnight on Dimensity 9300. Both stacks stay awake.",disable sim2 → run batterystats → reboot device
+MTK-3316,"Ping spikes on standalone 5G","Gaming ping spikes on SA but not NSA on MT6878. Path switch cost 0x5A27.",retest 5g → toggle airplane → run logcat
+MTK-3317,"Full bars NR but nothing loads","Five bars of 5G with zero throughput on ro.board.platform. Bearer established yet stalled.",toggle airplane → check apn → retest 5g
+MTK-3318,"Roaming latches dead 5G","Abroad it clings to unusable 5G on k689v1_64 instead of good 4G. Plmn policy logged ERR_NR_4431.",check apn → lock 4g → reboot device
+MTK-3319,"Airplane toggle needs two tries","First toggle never restores service on MT6989, second does. Ril state stuck.",toggle airplane → reboot device → run logcat
+MTK-3320,"VoLTE toggle is grayed out","The VoLTE switch cannot be touched on Dimensity 8300 although the plan includes it. Provision state ERR_IMS_4420 with ViLTE.",check apn → toggle volte → reboot device
+MTK-3321,"Calls fall back to 3G instantly","Every call drops to 3G on MT6896 though VoLTE worked last month. Srvcc handover forced.",toggle volte → check apn → run logcat
+MTK-3322,"Video calls connect without video","Video calls land as voice-only on ro.product.board. Codec negotiate gave 0x1A15.",toggle volte → test call → run logcat
+MTK-3323,"WiFi calling registration loops","WiFi calling registers then drops in a loop on k689v1_64. Wfc ePDG flaps.",toggle wifi → toggle volte → reboot device
+MTK-3324,"Texts arrive hours late on IMS","SMS over IMS arrives hours late on Dimensity 9300, RCS instant. Store-forward flagged ERR_IMS_4428.",toggle volte → reboot device → run logcat
+MTK-3325,"Emergency calls route wrong","Emergency dialing took the wrong profile on MT6878 in testing. Routing table suspect.",check apn → toggle volte → run logcat
+MTK-3326,"RCS stuck on setting up","Messages shows setting-up forever on ro.board.platform. Jibe sync returned 0x1A33.",clear messages data → toggle volte → reboot device
+MTK-3327,"Data SIM cannot call in HD","The data SIM falls to 3G for calls on Dimensity 8300 while SIM1 holds VoLTE. Dual-stack limit.",swap data sim → toggle volte → reboot device
+MTK-3328,"VoLTE dies while roaming","VoLTE works at home but never roams on MT6989. Partner profile logged ERR_IMS_4436.",check apn → toggle airplane → reboot device
+MTK-3329,"No call-waiting beep on VoLTE","Second incoming call makes no sound on VoLTE on ro.vendor.mediatek. Sip notify 0x1A40.",toggle volte → test call → run logcat
+MTK-3330,"Red boot warning after update","A red verified-boot warning appeared after the OTA on MT6896. Vbmeta digest mismatch ERR_AVB_9901.",relock bootloader → flash stock → reboot device
+MTK-3331,"Orange state will not go away","Orange unlocked warning persists after relocking on Dimensity 9300. Fuse state stuck.",relock bootloader → flash stock → reboot device
+MTK-3332,"Rollback protection blocks return","Downgrading to last month is refused on k689v1_64. Anti-rollback index tripped 0xA005.",stay on current → flash stock → reboot device
+MTK-3333,"Custom key enrollment fails","Enrolling our own verified-boot key fails on MT6989. Pkmd slot write rejected.",flash stock → enroll key → reboot device
+MTK-3334,"Slot B digest mismatch","Slot B reports vbmeta mismatch on ro.product.board while slot A boots. B image flagged ERR_AVB_9909.",flash stock → switch slot → reboot device
+MTK-3335,"Verified boot doubles boot time","Booting takes twice as long since enabling verification on Dimensity 8300. Hash tree walk slow.",flash stock → run logcat → reboot device
+MTK-3336,"Factory claims fuse blown","Service says the warranty fuse is blown on a sealed unit on MT6878. Attestation code 0xA012.",contact support → flash stock → run logcat
+MTK-3337,"dm-verity corruption on boot","Boot stops at a corruption error on ro.board.platform after a dirty shutdown. Fec could not repair.",flash stock → reboot to recovery → wipe cache
+MTK-3338,"Yellow state after self-sign","A yellow custom-OS warning shows after self-signing on k689v1_64. Key state ERR_AVB_9918.",enroll key → flash stock → reboot device
+MTK-3339,"Relocking bricks the device","Relocking the bootloader hard-bricked the phone on Dimensity 9300. Wipe token 0xA022.",keep unlocked → flash stock → run logcat
+MTK-3340,"Update fails at 47 percent","Every OTA fails at 47 percent on MT6989 with plenty free. Update_engine hash failed ERR_OTA_9910 with 0x0EA1.",free storage → sideload ota → reboot device
+MTK-3341,"Phone claims up to date on old build","An 8-month build insists it is current on Dimensity 8300. Update check never reaches the server.",tap build 7x → check update → reboot device
+MTK-3342,"Download pauses on mobile data","OTA download pauses the moment WiFi drops on ro.product.board. Metered flag code 0x0EA5.",allow data download → free storage → reboot device
+MTK-3343,"Post-update bootloop then fine","Two bootloops after every update before settling on k689v1_64. Dexopt crash suspected.",reboot to recovery → wipe cache → reboot device
+MTK-3344,"Update wipes paired Bluetooth","All pairings vanish with each update on MT6878. Bt config migration logged ERR_OTA_9918.",re-pair → sideload ota → run logcat
+MTK-3345,"Delta restarts from zero","Delta downloads restart from zero repeatedly on Dimensity 9300. Resume token invalid, 0x0EB0.",use full ota → free storage → sideload ota
+MTK-3346,"Beta opt-out wipes everything","Leaving beta wiped the whole phone without warning on ro.board.platform. Slot metadata lost.",backup data → sideload ota → reboot device
+MTK-3347,"Patch level display lies","Settings shows a new patch but code is old on MT6896. Version prop flagged ERR_OTA_9925.",sideload ota → check version → reboot device
+MTK-3348,"A/B slot stuck unbootable","Slot B marked unbootable after a power cut on Dimensity 8300. Boot control 0x0EB8.",switch slot → sideload ota → reboot device
+MTK-3349,"Updater log fills storage","Update_engine.log grew to 4GB on ro.vendor.mediatek. Verbose loop suspected.",clear cache → free storage → reboot device
+MTK-3350,"Under-display enroll always fails","Optical enrollment fails at the last step on MT6989 every attempt. Image too dim, ERR_FPS_3312 with 0xF953.",re-enroll finger → clean screen → reboot device
+MTK-3351,"Wet finger never recognized","Slightly damp fingers never unlock on Dimensity 9300. Contrast too low.",dry finger → re-enroll finger → run logcat
+MTK-3352,"Screen protector kills unlock","A thick protector broke unlocking on k689v1_64. Signal attenuated, ERR_FPS_3317.",recalibrate → re-enroll finger → run logcat
+MTK-3353,"Unlock needs a hard press","Unlock only works pressing hard on MT6878. Pressure threshold reads 0xF960.",re-enroll finger → clean screen → run logcat
+MTK-3354,"Bank rejects enrolled prints","The bank app rejects prints the lockscreen accepts on Dimensity 8300. Gatekeeper mismatch.",re-enroll finger → update firmware → run logcat
+MTK-3355,"Side sensor unlocks in pocket","The side sensor unlocks constantly in pockets on ro.product.board. Accidental code 0xF965.",enable pocket mode → re-enroll → reboot
+MTK-3356,"Face plus finger conflict","Enrolling both breaks both on MT6896. Template store collision.",re-enroll both → reboot device → run logcat
+MTK-3357,"Fingerprint icon burned into OLED","The sensor icon ghosted into the display on Dimensity 9300. Brightness flagged ERR_FPS_3325.",move icon → set 60hz → run logcat
+MTK-3358,"Cold weather kills recognition","Below freezing nothing unlocks on k689v1_64. Sensor response logged 0xF970.",warm hands → re-enroll finger → run logcat
+MTK-3359,"New screen sensor uncalibrated","After a screen replacement the sensor never works on ro.board.platform. Calibration missing.",calibrate sensor → re-enroll finger → reboot device
+MTK-3360,"Camera rattles when shaken","A loose rattle comes from the camera on MT6896 when shaken gently. OIS rails suspect, ois_rattle with ERR_OIS_1215 and 0x015A.",tap test → update camera fw → run logcat
+MTK-3361,"Walking video looks like jelly","Footstep wobble ruins walking video on Dimensity 9300. Eis overcorrects.",enable eis → update camera fw → run logcat
+MTK-3362,"Photos tilted 2 degrees always","Every photo leans two degrees on MT6989. Level fusion logged ERR_OIS_1220.",calibrate gyro → update camera fw → run logcat
+MTK-3363,"Focus hunts in low light","Autofocus racks back and forth in dim rooms on k689v1_64. Laser af return 0x0AF1.",clean lens → update camera fw → run logcat
+MTK-3364,"ToF claims 8 meters indoors","Depth reads 8m in a small room on Dimensity 8300. ToF crosstalk suspected.",clean lens → run sensor test → run logcat
+MTK-3365,"Ultra-wide edges smeared","Ultra-wide corners smear badly on MT6878 since the update. Distortion table flagged ERR_OIS_1227.",update camera fw → run logcat → reboot device
+MTK-3366,"Front camera soft after update","Selfies turned soft after the last OTA on ro.product.board. Front tuning reset, 0x0AF5.",clear camera data → update camera fw → reboot device
+MTK-3367,"Night mode takes 9 seconds","Night sight exposes for nine seconds handheld on Dimensity 9300. Frame count too high.",brace phone → update camera fw → run logcat
+MTK-3368,"Flash blows out everything","Every flash shot is pure white on MT6896. Preflash metering logged ERR_OIS_1233.",clean lens → update camera fw → run logcat
+MTK-3369,"Pro sliders do nothing","Manual focus and shutter sliders have no effect on k689v1_64. Hal3 passthrough broken, 0x0AF9.",clear camera data → update camera fw → reboot device
+MTK-3370,"AI benchmark crashes the NPU","The AI benchmark aborts the NPU job on Dimensity 9300 every run. Driver logged mtk_npu_timeout with ERR_NPU_6610 and 0x9E01.",clear cache → cool device → rerun benchmark
+MTK-3371,"Magic eraser hangs the gallery","Magic eraser spins forever on MT6989. Apu graph never returns.",clear cache → update firmware → run logcat
+MTK-3372,"Live translate overheats phone","Live translate gets the phone burning hot on k689v1_64. Sustained load code 0x9E05.",cool device → clear cache → run logcat
+MTK-3373,"Face unlock slow in the dark","Dark unlock takes three seconds on Dimensity 8300. Ir plus npu path slow.",clean sensor → retrain face → run logcat
+MTK-3374,"Voice demo force closes","The on-device voice demo crashes on open on MT6878. Model load flagged ERR_NPU_6617.",clear cache → cool device → reboot device
+MTK-3375,"Scene detect lags 2 seconds","Scene icons switch two seconds late on MT6896. Inference queued behind, 0x9E20.",update camera fw → clear cache → run logcat
+MTK-3376,"NPU driver version mismatch","Benchmark complains the NPU driver mismatches on Dimensity 9300. Ota skipped the blob.",update firmware → rerun benchmark → run logcat
+MTK-3377,"Call blur flickers badly","Background blur flickers on video calls on k689v1_64. Bokeh mask flagged ERR_NPU_6624.",update camera fw → test call → run logcat
+MTK-3378,"Offline dictation never starts","Offline voice typing never initializes on MT6989. Language pack code 0x9E28.",download pack → clear cache → reboot device
+MTK-3379,"Zoom shots full of artifacts","30x zoom shots look painted on Dimensity 8300. Super-resolution overshoots.",update camera fw → run logcat → reboot device
+MTK-3380,"Battery stuck at 50 for hours","Percentage sits at 50 for hours on MT6989 then drops normally. Fuel gauge logged ERR_FG_6620.",calibrate battery → reboot to recovery → run logcat
+MTK-3381,"Phone dies at 20 percent","Shutdowns hit at a displayed 20 percent on Dimensity 8300 in the cold. Impedance spike.",calibrate battery → cool device → run logcat
+MTK-3382,"Percent jumps after reboot","Rebooting changes the reading by 15 points on k689v1_64. Ocv table code 0x0605.",calibrate battery → reboot device → run logcat
+MTK-3383,"Back cover bulging outward","The back is visibly puffed on MT6878 and the screen lifts. Swollen cell suspected.",stop charging → contact support → run logcat
+MTK-3384,"Ten percent gone overnight idle","Ten percent vanishes with everything off on Dimensity 9300. Wakelock flagged ERR_FG_6630.",run batterystats → restrict background → reboot device
+MTK-3385,"Full in 20 minutes then dies","Charges impossibly fast then dies at 40 on ro.product.board. Gauge reads fake full, 0x0612.",calibrate battery → try 65w charger → run logcat
+MTK-3386,"Health says service needed","Battery health shows service at 900 cycles on MT6896. Capacity at 79 percent.",check cycles → contact support → run logcat
+MTK-3387,"Camera launch kills the phone","Opening the camera shuts it off at 30 percent on Dimensity 8300. Voltage sag logged ERR_FG_6638.",warm phone → calibrate battery → run logcat
+MTK-3388,"Standby fell to six hours","Two-day standby became six hours after the update on k689v1_64. Kernel wakelock 0x0642.",run batterystats → restrict background → reboot device
+MTK-3389,"Charge counter resets each boot","The cycle counter resets on every boot on MT6989. Qmax never learns.",calibrate battery → flash firmware → run logcat
+MTK-3390,"Full bars but calls fail instantly","Five bars yet every call fails at once on MT6896. Rild channel dead with ERR_RIL_4430.",toggle airplane → reboot device → run logcat
+MTK-3391,"Data works but SMS never arrives","Browsing is fine yet no texts arrive for days on Dimensity 9300. Sms over sg flagged 0x21A0.",toggle airplane → check apn → run logcat
+MTK-3392,"SIM toolkit menu empty","The carrier menu shows nothing on k689v1_64 though the SIM supports it. Stk refresh never fires.",reinsert sim → toggle airplane → reboot device
+MTK-3393,"Network search finds nothing","Manual search returns zero networks on MT6989 with known coverage. Scan logged ERR_RIL_4437.",toggle airplane → check bands → run logcat
+MTK-3394,"PIN unlock loops forever","Correct PIN loops back to entry on Dimensity 8300. Verify roundtrip code 0x21B5.",enter puk → toggle airplane → reboot device
+MTK-3395,"RIL socket died after update","No service at all since the OTA on MT6878, baseband alive. Rild crashed on boot.",toggle airplane → flash firmware → run logcat
+MTK-3396,"USSD codes return blank","Balance check returns an empty popup on ro.product.board. Session logged ERR_RIL_4444.",toggle airplane → test ussd → run logcat
+MTK-3397,"Forwarding settings will not save","Call forwarding refuses to save on Dimensity 9300. Ss request answered 0x21C0.",toggle volte → toggle airplane → run logcat
+MTK-3398,"Modem asserts on legacy network","Camping 3G-only areas reboots the modem on k689v1_64. Sunset network assert.",lock 4g → toggle airplane → flash firmware
+MTK-3399,"Baseband version shows unknown","Baseband reads unknown in settings on MT6989 with working calls. Version query flagged ERR_RIL_4451.",flash firmware → toggle airplane → run logcat
+MTK-3400,"No internet even though the router works","Browsing died on the couch while the laptop works fine, and the wifi icon is gone from the top bar. The wifi switch got turned off in quick settings.",turn on wifi → pick home network → reboot router if stuck
+MTK-3401,"WiFi icon missing from the top","Streaming stopped in the bedroom and only 4G shows now. Wifi got toggled off during yesterday's flight.",turn on wifi → forget network → rejoin network
+MTK-3402,"Phone burns mobile data at home","A data warning arrived mid-month, the phone has been on mobile data for days. Someone switched wifi off to save battery once.",turn on wifi → turn off mobile data → restart phone
+MTK-3403,"No calls or texts since the flight","Landed yesterday and nothing comes through, not even bars. Airplane mode stayed on from the plane.",turn off airplane → wait a minute → restart phone
+MTK-3404,"Internet dead after the cinema","Phone went silent for a movie with airplane mode and now maps will not load. The little plane icon sits in the corner.",turn off airplane → toggle wifi → restart phone
+MTK-3405,"Missed a job interview call","The interview call never rang through this morning. Airplane mode was left on overnight by accident.",turn off airplane → test with a call → restart phone
+MTK-3406,"New router password never works","Typing the new home wifi password fails every time. Caps lock was on the whole time.",check caps → retype slowly → forget network then rejoin
+MTK-3407,"Phone says wrong password daily","Office wifi rejects the saved password although colleagues connect fine. The password has a zero that looks like an O.",ask for exact password → forget network → rejoin network
+MTK-3408,"Connects at home but not at mum's","At mum's the password fails although she reads it out twice. An extra space sneaks in at the end.",retype without spaces → forget network → restart phone
+MTK-3409,"Nobody's wifi works, blaming the phone","The whole family is offline and only the phone gets accused. The router lights are orange.",reboot router → wait two minutes → rejoin network
+MTK-3410,"Internet dies every evening","Streaming buffers nightly around 8pm on every device in the house. The line itself drops.",reboot router → call isp → restart phone
+MTK-3411,"Full bars but nothing loads","Full signal yet pages time out everywhere at home. The router just needs a kick.",reboot router → forget network → rejoin network
+MTK-3412,"Internet painfully slow suddenly","Pages crawl since yesterday, turns out the phone joined the neighbour's open network. One bar of signal.",forget that network → join home network → turn off auto-join open networks
+MTK-3413,"Bank app warns on this network","The bank app refuses to open on the current wifi, which is the neighbour's unsecured one.",forget that network → join home network → use mobile data for banking
+MTK-3414,"Casting cannot find the TV","The TV vanished from the cast list because the phone sits on the neighbour's wifi while the TV is on ours.",join home network → restart tv app → restart phone
+MTK-3415,"Maps dead away from home","Navigation fails the moment wifi drops, the mobile data switch is off since a trip abroad.",turn on mobile data → allow maps on data → restart phone
+MTK-3416,"WhatsApp only works on wifi","Messages pile up until the home wifi connects, mobile data got disabled to save money.",turn on mobile data → check data warning limit → restart phone
+MTK-3417,"No internet on the train","Train ride with zero internet although signal is full. The data toggle stayed off since the flight.",turn on mobile data → turn off airplane → restart phone
+MTK-3418,"Instagram photos will not load","The feed shows grey boxes on mobile data but wifi is fine. Data saver blocks the images.",turn off data saver → allow instagram background data → restart app
+MTK-3419,"Emails arrive without pictures","Newsletters come through imageless on data and fine at home. The saver strips them.",turn off data saver → reload email → restart phone
+MTK-3420,"Music sounds flat outside","Spotify sounds dull away from wifi, quality locked low by data saver.",turn off data saver → set streaming quality → restart app
+MTK-3421,"No data on holiday abroad","Landed in Spain, calls work but no internet at all. Data roaming is off.",turn on roaming → pick local network → restart phone
+MTK-3422,"Maps dead at the arrival hall","Arrival terminal with no connection, roaming stayed disabled after the last bill shock.",turn on roaming → enable mobile data → restart phone
+MTK-3423,"Roaming bill shock after the trip","Came home to a huge bill, roaming stayed on all week with auto updates running.",turn off roaming → dispute bill → use hotel wifi next time
+MTK-3424,"Laptop rejects hotspot password","The laptop says wrong password for the phone hotspot. The password mixes up 1 and lowercase l.",show hotspot password → retype on laptop → restart hotspot
+MTK-3425,"Friend cannot join my hotspot","A friend's iPhone fails on the hotspot although androids join. The band is set to 6GHz only.",set hotspot to 2.4ghz → share qr code → restart hotspot
+MTK-3426,"Hotspot name vanished","The usual hotspot name is gone, it got renamed to AndroidAP by accident.",rename hotspot → share qr code → restart hotspot
+MTK-3427,"Hotspot dies after 2GB","Tethering cuts out mid-meeting every day, a 2GB hotspot limit was set months ago.",raise hotspot limit → turn off limit → restart hotspot
+MTK-3428,"Hotspot turns itself off","The hotspot switches off minutes after the last device leaves. Timeout setting.",set timeout to never → keep a device connected → restart hotspot
+MTK-3429,"Laptop slow on hotspot, phone fast","The phone flies but the tethered laptop crawls on 5GHz hotspot.",allow more devices → set 2.4ghz → restart hotspot
+MTK-3430,"New speaker never shows up","The new speaker never appears in the bluetooth list, bluetooth itself is switched off.",turn on bluetooth → put speaker in pairing → pair
+MTK-3431,"Watch stopped syncing steps","The watch has not synced for days, phone bluetooth got disabled.",turn on bluetooth → open watch app → restart phone
+MTK-3432,"Car will not connect anymore","The car used to auto-connect and now nothing happens, bluetooth stayed off since the flight.",turn on bluetooth → forget car → pair again
+MTK-3433,"Earbuds play the kids tablet","Putting the earbuds in plays cartoon audio, they latched onto the tablet first.",turn off tablet bluetooth → pair to phone → rename earbuds
+MTK-3434,"Calls go to earbuds in a drawer","Callers hear nothing, audio routes to earbuds sitting upstairs in a drawer.",turn off earbuds → switch audio to phone → unpair if needed
+MTK-3435,"Music starts on the old phone","Pressing play wakes music on the retired phone in the drawer, still paired there.",unpair from old phone → pair to new phone → restart earbuds
+MTK-3436,"Only the right earbud plays","The left bud went silent yesterday, its charge is zero while the right is full. It never seated in the case.",reseat both buds → charge case → re-pair
+MTK-3437,"One side dies after ten minutes","The left bud dies minutes in, that side's battery is worn. Case shows it at 10 percent.",charge fully → clean contacts → replace bud if old
+MTK-3438,"Earbuds whisper even at max","Both sides whisper at full volume, the wax guards are clogged solid.",clean the mesh → turn up volume → check volume limit
+MTK-3439,"Callers hear my empty car","Answering at home routes audio to the car parked outside, in bluetooth range of the sofa.",turn off car bluetooth → switch audio to phone → forget car if sold
+MTK-3440,"Music blasts the driveway at 7am","The morning podcast starts playing in the parked car instead of the earbuds.",turn off car bluetooth → set default to earbuds → unpair old car
+MTK-3441,"Late call echoes through the car","A goodnight call played over the car speakers outside at midnight.",switch audio to phone → turn off car bluetooth → lower car range
+MTK-3442,"New earbuds invisible to phone","Fresh earbuds never appear in the list, they were never put in pairing mode.",hold case button → wait for blinking → pair
+MTK-3443,"Speaker joins the tablet instead","The speaker keeps joining the tablet because it paired there first and steals it.",turn off tablet bluetooth → hold speaker pair button → pair to phone
+MTK-3444,"Watch app cannot find the watch","The watch is charged and on but the app sees nothing until the watch shows its code.",open pair mode on watch → keep devices close → pair
+MTK-3445,"Videos play with no sound","YouTube is silent although nothing looks muted, media volume sits at zero.",press volume up in video → check dnd → restart app
+MTK-3446,"Alarm vibrated but never rang","The morning alarm only buzzed, its volume slider sits at zero from last night's videos.",raise alarm volume → test alarm → turn off dnd
+MTK-3447,"One contact never rings","Mum's calls never ring although everyone else does, her custom ringtone got set to silent.",reset her ringtone → check dnd exceptions → test call
+MTK-3448,"Nobody can reach me since Friday","A weekend of missed calls, Do Not Disturb stayed on after Friday movie night.",turn off dnd → check schedule → test call
+MTK-3449,"Texts silent but calls ring","Message sounds gone while calls ring through, DND currently allows calls only.",turn off dnd → check message sound → restart phone
+MTK-3450,"Alarms slept through twice","DND blocked everything including the weekday alarm, the schedule ran over.",turn off dnd → allow alarms in dnd → set backup alarm
+MTK-3451,"Screen turned black and white","Panic at 10pm as the display went monochrome, bedtime mode kicked in by itself.",turn off bedtime mode → check schedule → restart phone
+MTK-3452,"Colours gone every single night","The screen loses colour nightly and returns by morning, grayscale schedule is on.",turn off bedtime mode → adjust schedule → restart phone
+MTK-3453,"Cannot get the colour back","Everything grey since yesterday evening, the bedtime routine is stuck on.",turn off bedtime mode → clear routine → restart phone
+MTK-3454,"Alarm rang at night instead","Set 7:00 but it rang at 19:00, PM got picked instead of AM.",set 07:00 am → label the alarm → test alarm
+MTK-3455,"Missed the flight by 12 hours","Flight at 7am, the alarm proudly rang at 7pm. PM again.",set 07:00 am → enable 24h clock → set backup alarm
+MTK-3456,"Gym alarm fires after work","The 6 o'clock alarm goes off at dinner, it really means 18:00.",set 06:00 am → use 24h clock → test alarm
+MTK-3457,"Alarm shows but makes no sound","The alarm card appears silently, alarm volume is zero from last night's videos.",raise alarm volume → test alarm → turn off dnd
+MTK-3458,"Vibration only, never ringing","The phone shakes the pillow but never rings, the sound got muted.",raise alarm volume → pick a tone → test alarm
+MTK-3459,"One alarm silent, others loud","The 6am alarm is mute while 7am blasts, its tone got set to none.",pick a tone → raise alarm volume → test alarm
+MTK-3460,"Alarms ring all morning long","Snoozed alarms from months pile up and ring one after another.",delete old alarms → keep two → test alarm
+MTK-3461,"Phone rings at 3am nightly","A forgotten 3am alarm from night shifts fires every single night.",find 03:00 alarm → delete it → check other days
+MTK-3462,"Weekend ruined by work alarm","Saturday 6am alarm from the work routine, repeat was set to daily.",set repeat weekdays → delete extra → test alarm
+MTK-3463,"Clock an hour off after landing","Landed and the clock never updated, automatic time is switched off.",turn on auto time → pick network zone → restart phone
+MTK-3464,"Meeting alerts arrive an hour late","The calendar still lives in the old timezone after the move.",turn on auto time → fix event zone → restart phone
+MTK-3465,"Bank codes rejected as expired","Login codes fail instantly, the phone clock drifts minutes off.",turn on auto time → sync clock → retry login
+MTK-3466,"Flight shows at 3am local","The boarding event saved in home timezone displays 3am here.",fix event timezone → turn on auto time → re-add event
+MTK-3467,"Weekly meeting shifted an hour","The standup moved after daylight saving on one phone only.",fix event timezone → update app → restart phone
+MTK-3468,"Birthday alerts at midnight","All-day birthdays ping at midnight, alerts were set to exact time.",set alert to morning → fix event timezone → restart phone
+MTK-3469,"Casino events flood the calendar","Dozens of casino invites appear daily through a leaked email.",delete spam events → block sender → report spam
+MTK-3470,"Crypto giveaway on every day","The calendar is full of giveaways never accepted by anyone.",remove calendar subscription → block sender → restart app
+MTK-3471,"Ex's calendar still syncing","An old shared calendar keeps adding their events months later.",leave shared calendar → remove account → restart app
+MTK-3472,"Screen looks broken, so dim","Display nearly black indoors, the slider got dragged to minimum in a pocket.",raise brightness → turn on adaptive → restart phone
+MTK-3473,"Nothing visible in sunlight","Screen invisible outdoors with brightness stuck low and auto off.",raise brightness → turn on adaptive → move to shade
+MTK-3474,"Screen dims reading in bed","Brightness sinks while reading at night, adaptive learned it wrong.",raise brightness → reset adaptive → turn off bedtime dim
+MTK-3475,"Max brightness still dim outside","Slider maxed yet dim outdoors, the extra-bright mode never triggers.",turn on extra brightness → clean light sensor → cool phone
+MTK-3476,"Brightness jumps under trees","Walking under trees strobes the brightness up and down nonstop.",turn off adaptive → set manual → restart phone
+MTK-3477,"Screen darkens mid-game","Display dims as the phone warms during games, thermal dimming.",cool phone → lower graphics → take off case
+MTK-3478,"Screen sleeps while reading recipes","Display naps mid-recipe with floury hands, timeout is 15 seconds.",set timeout to 5 min → tap to wake → keep awake cooking
+MTK-3479,"Bank app logs out constantly","The screen sleeps during the code wait and the session dies.",set timeout to 2 min → disable lock delay → retry login
+MTK-3480,"Maps sleeps in the car mount","Navigation naps on long straights, timeout on the shortest setting.",set timeout long → keep charging → enable driving mode
+MTK-3481,"Screen turned yellow overnight","Morning shock with everything amber, eye comfort switched on at sunset.",turn off eye comfort → check schedule → restart phone
+MTK-3482,"Photos look jaundiced","All pictures yellow since evening mode stuck on through noon.",turn off eye comfort → check schedule → calibrate display
+MTK-3483,"White looks orange at dinner","Whites go orange every evening on schedule, stronger than expected.",lower eye comfort strength → adjust schedule → restart phone
+MTK-3484,"Text enormous after toddler","A toddler grew the font to billboard size through settings.",shrink font → shrink display size → lock settings
+MTK-3485,"Buttons fall off the screen","Dialog buttons unreachable with display size maxed out.",shrink display size → shrink font → restart app
+MTK-3486,"Keyboard covers everything","A giant keyboard hides the chat with large text enabled.",shrink font → shrink keyboard → restart phone
+MTK-3487,"Phone narrates every tap","Every tap gets spoken aloud and everything needs double-tap, TalkBack switched on.",turn off talkback → learn two-finger scroll → restart phone
+MTK-3488,"Swipes dead, must double tap all","Gestures died since the shortcut fired in a pocket.",turn off talkback → disable shortcut → restart phone
+MTK-3489,"Green box follows my finger","A green outline tracks touches and nothing opens normally.",turn off talkback → turn off select-to-speak → restart phone
+MTK-3490,"Screen zooms at random","The display zooms on triple-tap pockets, magnification gesture is on.",turn off magnification → use pinch zoom → restart phone
+MTK-3491,"Stuck zoomed with no exit","Zoomed in with no obvious way out, needs a two-finger drag.",drag two fingers → turn off magnification → restart phone
+MTK-3492,"Keyboard balloons randomly","The keyboard balloons then returns to normal on taps.",turn off magnification → shrink font → restart phone
+MTK-3493,"Colours gone psychedelic","Photos look like negatives after a prankster inverted the colours.",turn off colour inversion → check themes → restart phone
+MTK-3494,"Black is white everywhere","The whole UI inverted since yesterday, a shortcut triggered it.",turn off colour inversion → disable shortcut → restart phone
+MTK-3495,"Camera preview looks alien","Preview solarized although saved photos come out normal.",turn off colour inversion → restart camera → restart phone
+MTK-3496,"Stuck inside the kid's game","Home and back died after handing the phone over, the screen got pinned.",hold back plus home → unpin → turn off pinning
+MTK-3497,"Cannot leave YouTube Kids","The pinned app traps grandparents with no visible exit.",hold back plus home → unpin → use kid mode instead
+MTK-3498,"Status bar gone in one app","A pinned demo hides everything at the shop.",hold back plus home → unpin → restart phone
+MTK-3499,"Two apps share the screen","Half-screen video appeared after a long-press accident.",drag divider away → exit split → restart app
+MTK-3500,"Keyboard squeezes the video","Split mode squeezes everything since a gesture misfire.",exit split → restart app → check gesture settings
+MTK-3501,"Game runs in a tiny window","The game launched into split view and lags badly.",exit split → relaunch game → restart phone
+MTK-3502,"Back button vanished after update","The update swapped buttons for gestures and back is nowhere to be found.",switch to 3-button nav → learn swipe back → restart phone
+MTK-3503,"Swipes do nothing, miss buttons","Old muscle memory taps where the buttons used to be.",switch to 3-button nav → practice gestures → restart phone
+MTK-3504,"Grandma lost after the update","Everything moved for grandma overnight and nothing is where it was.",switch to 3-button nav → enlarge text → try simple launcher
+MTK-3505,"Game pauses on every edge swipe","Edge swipes exit to home mid-race every time.",enable game mode → block gestures in game → use buttons
+MTK-3506,"Shooter fires going back","The back swipe also taps fire in the shooter.",enable game mode → adjust sensitivity → restart game
+MTK-3507,"Keyboard dismisses while typing","A swipe-back eats the first keystroke in chats.",adjust sensitivity → switch keyboard → restart app
+MTK-3508,"Screen shrank into a corner","The display dropped to half size after a low swipe.",tap empty area → turn off one-handed → restart phone
+MTK-3509,"Top half unreachable suddenly","One-handed mode keeps triggering in pockets.",tap empty area → turn off one-handed → lock screen
+MTK-3510,"Keyboard tiny on one side","The keyboard docked mini to one side and stayed there.",expand keyboard → turn off one-handed → restart phone
+MTK-3511,"Called the boss from my pocket","Pocket-dialled the boss three times during a walk.",lock screen → turn on pocket mode → shorten timeout
+MTK-3512,"Gibberish texts sent overnight","Nonsense messages went out while asleep.",lock screen → turn on pocket mode → check sent folder
+MTK-3513,"Emergency call from my pocket","Pocket-dialled emergency services twice this week.",lock screen → turn on pocket mode → shorten timeout
+MTK-3514,"SOS siren at the cinema","Five rapid power presses set off the emergency siren mid-film.",cancel sos → turn off power-button sos → apologize around
+MTK-3515,"Police called back from my jeans","Tight jeans pressed power five times and dispatch called back.",answer callback → turn off power-button sos → use looser case
+MTK-3516,"SOS countdown every dog walk","The leash hand squeezes trigger the countdown daily.",cancel sos → require swipe to send → change grip
+MTK-3517,"Flashlight on all night","Woke to a dead battery and a hot flashlight left burning.",turn off torch → charge phone → check battery health
+MTK-3518,"Torch turns on in every pocket","Pocket presses light it up nightly.",turn off torch → lock screen → turn on pocket mode
+MTK-3519,"Flash blinks with each text","Every message strobes the room at night.",turn off flash alerts → check notification settings → restart phone
+MTK-3520,"Bank screenshots come out black","Screenshots inside the bank app save pure black.",use in-app share → export statement pdf → nothing is broken
+MTK-3521,"Cannot prove the payment sent","The black screenshot is useless as a receipt.",use in-app receipt → download pdf → email it
+MTK-3522,"Recording blanks the bank app","Screen recording goes black whenever the bank app opens.",pause recording → use in-app share → resume after
+MTK-3523,"Menu QR never focuses","The restaurant code will not scan in dim light.",wipe lens → add light → type url instead
+MTK-3524,"Ticket QR rejected at the gate","A cracked protector scatters the scanner laser.",raise brightness → lift case flap → use printed backup
+MTK-3525,"WiFi QR joins nothing","Scanning the router QR just opens text instead of joining.",use wifi qr in settings → retype password → restart phone
+MTK-3526,"Dark corner in every photo","The same blurry corner in all shots, a fingertip over the ultra-wide.",move finger → wipe lens → retake
+MTK-3527,"Night shots glow weird","Halos ring every light from a greasy lens.",wipe lens → hold still → retake
+MTK-3528,"Front camera always foggy","Selfies permanently misty from face cream on the lens.",wipe lens → remove film → retake
+MTK-3529,"Concert photos all smears","Stage shots streak with the movement.",hold still → brace on rail → use night mode
+MTK-3530,"Party pics of kids blurry","Running kids blur indoors every time.",add light → tap to focus → use burst mode
+MTK-3531,"City lights trail at night","Handheld night shots streak badly.",brace phone → use night mode → hold still 3s
+MTK-3532,"Two hundred photos of the floor","Holding the shutter fired a huge burst of shoes.",delete burst → tap shutter → keep best shot
+MTK-3533,"Gallery full of duplicates","Every photo saved fifteen times from long presses.",turn off burst → delete dupes → empty trash
+MTK-3534,"Shutter misses the goal","Pressing early still misses the kick.",hold earlier → enable sport mode → keep best shot
+MTK-3535,"Deleted the whole holiday album","Two hundred holiday photos gone in one swipe of panic.",open trash → restore all → turn on backup
+MTK-3536,"Kid deleted the camera roll","A toddler cleared yesterday's photos.",open trash → restore all → lock gallery
+MTK-3537,"Trash emptied itself","Thirty-day trash expired the wedding originals.",check cloud backup → contact support → turn on backup
+MTK-3538,"New phone has no old photos","Signed in but zero old pictures, backup was off for a year.",turn on backup → connect wifi → wait overnight
+MTK-3539,"Photos gone after the reset","Reset wiped everything assuming the cloud had it, backup was off.",check cloud → turn on backup → restore what remains
+MTK-3540,"Only screenshots backed up","Backup covered device folders only, the camera folder excluded.",include camera folder → connect wifi → wait overnight
+MTK-3541,"New phone chat history empty","Moved phones and years of chats missing, Drive backup two years old.",backup now → move with cable → restore on new
+MTK-3542,"Backup stuck at 96 percent","Nightly backup stalls near done, Drive is full.",free drive space → backup on wifi → retry
+MTK-3543,"Videos missing from backup","Chats restored but no videos, the video toggle was off.",include videos → backup on wifi → restore again
+MTK-3544,"Camera refuses to take photos","Shutter dead with a storage-full toast.",delete screenshots → empty trash → free 1GB
+MTK-3545,"Video stops after 3 seconds","Recording halts almost immediately with 200MB free.",delete offline songs → empty trash → retry
+MTK-3546,"Cannot save one screenshot","Screenshot toast says storage full.",delete telegram cache → empty trash → restart phone
+MTK-3547,"One chat app eats 14GB silently","Viewed videos hoarded in cache for months.",clear telegram cache → disable auto-download → restart phone
+MTK-3548,"Phone full despite few apps","Inspector shows one chat app holding 20GB.",clear telegram cache → limit keep media → restart phone
+MTK-3549,"Gallery full of strangers memes","Auto-save dumps every group meme into the gallery.",turn off save to gallery → clear cache → delete saved
+MTK-3550,"Downloads quietly ate 12GB","Playlist downloads piled up for a year.",remove old downloads → set normal quality → keep wifi-only
+MTK-3551,"Storage warning after road trip","Trip downloads never got removed after.",remove trip playlists → empty trash → restart phone
+MTK-3552,"Podcasts pile up unplayed","Auto-downloaded episodes stack for months.",turn off auto-download → delete played → restart app
+MTK-3553,"Screenshots folder is 6GB","Years of screenshots nobody ever opened.",review folder → delete junk → empty trash
+MTK-3554,"Every meme saved twice","Power plus volume misfires screenshot constantly.",delete dupes → adjust button timing → empty trash
+MTK-3555,"Receipt lost among memes","Cannot find the receipt shot among hundreds.",move receipts to folder → delete rest → empty trash
+MTK-3556,"Phone slow for weeks","Everything lags and the last restart was a month ago.",restart phone → update apps → free storage
+MTK-3557,"Apps crash one after another","Three apps crashed today with 40 days uptime.",restart phone → clear app cache → update app
+MTK-3558,"Calls drop after long uptime","Month-old session and the modem wants a fresh start.",restart phone → toggle airplane → test call
+MTK-3559,"Switching apps reloads all","Dozens open and everything restarts.",close all → keep five → restart phone
+MTK-3560,"Phone hot doing nothing","A video render ran in background since morning.",close all → cool phone → restrict background
+MTK-3561,"Battery halves by lunch idle","Forty apps stayed awake overnight.",close all → run batterystats → restrict background
+MTK-3562,"Phone suddenly sluggish","Everything stutters since morning, saver kicked in at 20 percent.",turn off saver → charge phone → check schedule
+MTK-3563,"Dim and slow at thirty percent","Saver schedule starts at 30, dims and throttles.",turn off saver → adjust schedule → charge phone
+MTK-3564,"Vibration gone plus slow","Saver killed haptics and speed together.",turn off saver → charge phone → restart phone
+MTK-3565,"Music stops with screen off","Music dies minutes after locking, optimization sleeps the app.",disable optimization for spotify → lock app open → keep offline songs
+MTK-3566,"Audiobook loses its place","Sleep timer plus optimization resets position nightly.",disable optimization → set sleep timer → bookmark manually
+MTK-3567,"Run tracker pauses mid-run","The tracker naps with the screen off.",disable optimization → keep screen on → start tracking again
+MTK-3568,"Messages arrive in hourly bursts","Deep sleep batches everything instead of realtime.",disable optimization for chats → allow background → turn off deep sleep
+MTK-3569,"Work emails hours late","Urgent mail from nine arrives at lunch.",disable optimization for mail → check sync → turn off deep sleep
+MTK-3570,"Bank alerts come next day","A fraud alert arrived a day late.",disable optimization → allow notifications → turn off deep sleep
+MTK-3571,"Bank app logged me out","An update signed everything out and the password is forgotten.",reset password → re-login → save in manager
+MTK-3572,"Streaming kicked all devices","A password change elsewhere logged this phone out.",re-login → check devices → save in manager
+MTK-3573,"Work mail asks setup again","A new certificate requires re-enrollment.",re-login → contact it → save in manager
+MTK-3574,"Big game never downloads","A 5GB download pends forever waiting for wifi.",connect wifi → allow downloads on data → retry
+MTK-3575,"Updates pending for weeks","Auto-update set to wifi-only, months behind.",connect wifi → update all → turn on auto-update
+MTK-3576,"Install button spins forever","Payment verification stuck mid-purchase.",check payment → clear store cache → retry
+MTK-3577,"App opens then closes instantly","The bank app needs the new version but auto-update is off.",update app → clear app cache → reopen
+MTK-3578,"New feature missing vs friends","Friends have it but this store copy never updated.",update app → restart phone → re-login
+MTK-3579,"App too old to run","An ancient install finally refused to open.",update app → update system → reopen
+MTK-3580,"One friend's texts silent","Her conversation got muted last year and forgotten.",unmute conversation → check dnd → test message
+MTK-3581,"Work chat never pings","The channel stayed muted since the holidays.",unmute channel → allow notifications → test message
+MTK-3582,"Group silent since match night","Muted for the match and stayed muted after.",unmute group → allow notifications → test message
+MTK-3583,"Chat heads cover the screen","Bubbles overlay everything since the update.",turn off bubbles → open chat fullscreen → restart phone
+MTK-3584,"Conversation lost, list empty","The chat lives only in a bubble now.",open bubble → pop it out → turn off bubbles
+MTK-3585,"Bubbles only for one person","Only mum triggers bubbles.",per-chat bubble setting → turn off bubbles → restart phone
+MTK-3586,"Keyboard types in Spanish","Spacebar shows ES after a long-press accident.",switch to english → remove spanish → restart phone
+MTK-3587,"Suggestions vanished","No autocorrect with the wrong language pack.",switch to english → enable suggestions → restart phone
+MTK-3588,"Mic writes Spanish too","Dictation follows the keyboard language.",switch to english → re-add mic → test dictation
+MTK-3589,"Texts full of wrong words","Autocorrect rewrites names into groceries.",add names to dictionary → tone down correction → proofread
+MTK-3590,"Swears become the duck word","The classic substitution rage.",edit replacements → tone down correction → proofread
+MTK-3591,"Passwords keep failing","Autocorrect fights the password field.",turn off for passwords → show password → retype
+MTK-3592,"Dictation writes German","Spoken English transcribed as German words.",set dictation english → switch keyboard → test again
+MTK-3593,"Assistant answers in French","Replies come back French after the holiday.",set assistant english → switch keyboard → test again
+MTK-3594,"It writes the word comma","Punctuation spoken aloud as words.",enable auto punct → speak naturally → test again
+MTK-3595,"Everyone listed three times","SIM plus Google plus WhatsApp copies of all.",merge duplicates → hide sim contacts → keep google only
+MTK-3596,"Calls show numbers not names","Default account flipped to the empty SIM.",set default google → hide sim → restart phone
+MTK-3597,"Deleted contacts keep returning","Removed SIM copies sync straight back.",delete from sim → hide sim contacts → merge duplicates
+MTK-3598,"All contacts gone, new phone","Signed into the wrong Google account.",switch account → turn on sync → wait
+MTK-3599,"Half the contacts missing","The old phone synced partially on hotel wifi.",turn on sync → connect wifi → wait overnight
+MTK-3600,"Work contacts vanished Friday","The work profile got removed remotely after exit.",contact it → export personal first → switch account
+MTK-3601,"Gmail stopped last Tuesday","Sync got toggled off while saving data.",turn on sync → open gmail → pull to refresh
+MTK-3602,"Calendar empty on phone only","The web has everything but sync is off for the account.",turn on sync → pick calendars → wait
+MTK-3603,"Offline files months outdated","Offline copies went stale with sync paused.",turn on sync → mark offline → connect wifi
+MTK-3604,"Ten unknown calls a day","Robocalls flood in since the number leaked.",enable spam filter → block numbers → report spam
+MTK-3605,"Silent calls at midnight","Empty-line calls in the middle of the night.",enable dnd schedule → block numbers → report spam
+MTK-3606,"Own number calling itself","A spoofed call from my own number, classic scam.",never answer → block number → report spam
+MTK-3607,"Parcel held text with a link","A fake courier link asking for card details.",delete message → never tap → report spam
+MTK-3608,"Bank warning text at 2am","A fake fraud alert harvesting logins.",call bank directly → delete message → report spam
+MTK-3609,"Prize winner SMS out of nowhere","Won a lottery never entered.",delete message → block number → report spam
+MTK-3610,"Codes go to the dead number","New SIM in yet codes still route to the old one.",update number everywhere → use backup codes → keep old sim a week
+MTK-3611,"Locked out of email abroad","The only verification is SMS to the home SIM.",buy esim data → update number → use backup codes
+MTK-3612,"Authenticator lost with old phone","Traded in without transferring the app.",use backup codes → re-enroll → print codes
+MTK-3613,"New password rejected for a day","Fresh password fails on one device for 24 hours.",wait 24h → re-login → save in manager
+MTK-3614,"Recovery email dead too","Recovery points to a long-closed account.",add current recovery → re-login → save in manager
+MTK-3615,"Scared to sell the old phone","Worried the buyer gets locked out.",remove account first → factory reset → verify setup screen
+MTK-3616,"PIN gone after months of prints","Muscle memory for the PIN is erased.",try usual ones → unlock with fingerprint → reset pin
+MTK-3617,"Kid changed the PIN","A niece set a new code and forgot it instantly.",ask nicely → factory reset if stuck → turn on backup
+MTK-3618,"PIN pad shuffles digits","The randomized pad confuses every entry.",turn off scramble → enter slowly → reset pin
+MTK-3619,"Sunglasses defeat the unlock","Shades on and face unlock fails.",lift glasses → add appearance → use fingerprint
+MTK-3620,"Mask breaks it every day","Mask plus hat never passes.",pull mask → add appearance → use fingerprint
+MTK-3621,"Morning face unrecognized","Bedhead fails the check at 6am.",retry awake → add appearance → use pin
+MTK-3622,"Rain kills the fingerprint","Drizzle equals no unlock at all.",dry finger → wipe sensor → use pin meanwhile
+MTK-3623,"Gym sweat blocks the sensor","Post-workout prints unreadable.",dry finger → wipe sensor → re-enroll dry
+MTK-3624,"Dishwater hands always fail","Pruney fingers never match.",dry hands → use pin → re-enroll later
+MTK-3625,"Thick glass breaks unlock","A heavy protector attenuates the sensor.",recalibrate → re-enroll → use thinner film
+MTK-3626,"Bubble sits over the sensor","An air pocket rests right on the reader.",reapply protector → re-enroll → use pin meanwhile
+MTK-3627,"Privacy film starves sensor","The dark film defeats the optical reader.",cut window → re-enroll → switch film
+MTK-3628,"Whole phone turned Chinese","A toddler switched the system language.",follow icons to language → pick english → lock settings
+MTK-3629,"Keyboard suddenly Arabic","RTL layout appeared after a long press.",switch keyboard → remove arabic → restart phone
+MTK-3630,"Voice replies in Hindi","The assistant language flipped by itself.",set assistant english → switch keyboard → test again
+MTK-3631,"Kid beat screen time via clock","A manual clock jump earned three extra hours.",set auto time → lock settings → use family link
+MTK-3632,"Bedtime dodged via timezone","A timezone hop skipped bedtime.",set auto time → lock settings → use family link
+MTK-3633,"Reminder skipped by date change","Pushing the date forward skipped the exam reminder.",set auto time → re-add reminder → lock settings
+MTK-3634,"Dragon gems billed 40 euros","One-tap purchase with a saved card.",request refund → require password → remove card
+MTK-3635,"Trial renewed silently","The free trial converted without warning.",cancel subscription → request refund → turn off renewals
+MTK-3636,"Nine copies of one movie","Laggy taps bought it over and over.",request refund → check library → require password
+MTK-3637,"Clock confusion at 14:30","The 24-hour clock after the update mystifies.",switch 12h → explain once → leave it
+MTK-3638,"Dates read backwards","US format after the reset confuses birthdays.",set region → fix format → restart phone
+MTK-3639,"Fahrenheit shock at 102","Brief panic at 102 degrees, it means 39C.",set celsius → check widget → breathe
+MTK-3640,"Subtitles on every video","Live captions narrate everything since a volume-key hold.",turn off live captions → disable shortcut → restart phone
+MTK-3641,"Private calls getting captioned","Calls transcribed live on screen.",turn off live captions → check privacy → restart phone
+MTK-3642,"Caption box will not leave","A floating box stuck mid-screen.",drag to dismiss → turn off live captions → restart phone
+MTK-3643,"TV ads wake the assistant","Commercials trigger it every night.",lower sensitivity → retrain voice → mute ads
+MTK-3644,"Phone answers the radio","The morning show keeps setting timers.",lower sensitivity → turn off hotword → retrain voice
+MTK-3645,"Two phones answer together","Old and new both reply at once.",retire old → lower sensitivity → rename one
+MTK-3646,"Driving mode starts on trains","The commute triggers car mode daily.",turn off auto-launch → remove car bluetooth → dismiss
+MTK-3647,"Passenger calls silenced","Driving mode eats calls as a passenger.",turn off driving mode → allow calls → dismiss
+MTK-3648,"Car UI hijacks maps","The driving dashboard replaces navigation.",turn off driving mode → open maps → dismiss
+MTK-3649,"Missed the interview call","Facedown phone silenced the big call.",turn off flip-shhh → allow starred → test call
+MTK-3650,"Silent meetings mystery","Facedown on tables mutes everything.",turn off flip-shhh → use dnd schedule → test call
+MTK-3651,"Naps silence everything","A facedown nap eats the afternoon calls.",turn off flip-shhh → allow starred → test call
+MTK-3652,"Song radar blamed for drain","Now Playing suspected for battery use.",turn off now playing → check battery → keep it off
+MTK-3653,"Lock screen names every song","A history of cafe songs nobody wants.",turn off now playing → clear history → restart phone
+MTK-3654,"Two apps identify at once","Shazam and built-in clash.",pick one → turn off now playing → uninstall other
+MTK-3655,"Weather shows the old town","Moved cities but the widget never followed.",refresh widget → fix location → re-add widget
+MTK-3656,"Widget stuck on yesterday","Frozen sunny icon through a real storm.",refresh widget → allow background → re-add widget
+MTK-3657,"Two cities flip randomly","Home and work alternate for no reason.",set home city → turn off auto → re-add widget
+MTK-3658,"Maps dot covers blocks","Location off so the dot spans streets.",turn on location → set high accuracy → step outside
+MTK-3659,"Weather app totally blank","No location means no forecast.",turn on location → allow app → refresh widget
+MTK-3660,"Ride app cannot find me","The pickup pin lands streets away.",turn on location → allow app → move outside
+MTK-3661,"Compass points backwards","Needs the figure-eight wave.",wave figure-8 → move from metal → retry
+MTK-3662,"North drifts standing still","The arrow wanders without moving.",wave figure-8 → calibrate → retry
+MTK-3663,"Trail arrow spins at junctions","The hiking arrow rotates where paths meet.",wave figure-8 → open sky → retry
+MTK-3664,"Saved map expired mid-trip","A year-old download vanished abroad.",download fresh → enable auto-update → use wifi
+MTK-3665,"No maps in the tunnel","Signal dies underground with nothing saved.",download area → enable auto-update → retry offline
+MTK-3666,"Huge download stuck pending","A giant region waits forever for wifi.",connect wifi → shrink area → retry
+MTK-3667,"Pinned the wrong floor","Garage pin dropped a level off.",add photo of pillar → set reminder → walk the floor
+MTK-3668,"Pin drifted 200 meters","GPS wobble misplaced it badly.",drop pin outside → add photo → set reminder
+MTK-3669,"Forgot to save anything","No pin, no photo, car lost.",retrace steps → check timeline → photograph pillar next time
+MTK-3670,"Gate rejects the phone","The wrong card is set default in the wallet.",set default card → turn on nfc → retry gate
+MTK-3671,"Top-up card declined","Balance top-up keeps failing.",update payment → retry top-up → use station machine
+MTK-3672,"Bus reader stays silent","NFC switched off by battery saver.",turn on nfc → set default card → retry gate
+MTK-3673,"Scanner cannot read dim code","Brightness too low at the gate.",raise brightness → turn off dark mode → print backup
+MTK-3674,"Screenshot refused at security","Only the live pass is accepted.",open airline app → refresh pass → no screenshots allowed
+MTK-3675,"Phone died in the queue","Two percent left at boarding.",charge at gate → lower brightness → print backup
+MTK-3676,"Concert footage unwatchable","Full-zoom arm's-length shake everywhere.",brace elbows → stop zooming → enable eis
+MTK-3677,"Match video all wobble","Running the sideline sways it all.",stand still → stop zooming → enable eis
+MTK-3678,"Night market clips streak","Low light plus motion blur.",brace phone → use night mode → hold still
+MTK-3679,"Selfies look harsh now","The update reset the beauty filter.",re-enable filter → set level → retake
+MTK-3680,"Face differs from mirror","Wide lens plus filter off distorts.",step back → re-enable filter → retake
+MTK-3681,"Friends airbrushed, I'm not","Their app beautifies, stock camera does not.",re-enable filter → try their app → retake
+MTK-3682,"Can barely hear callers","Earpiece volume slid to minimum.",raise call volume → clean earpiece → test call
+MTK-3683,"Muffled since the new case","A case flap covers the slot.",reposition case → clean earpiece → test call
+MTK-3684,"Deaf on one side unnoticed","One ear hears nothing on calls.",test other ear → raise call volume → enable mono
+MTK-3685,"Everyone says I'm distant","A finger sits over the mic hole.",move finger → clean mic hole → test call
+MTK-3686,"Muffled after beach day","Sand packed into the mic mesh.",clean mic hole → blow gently → test call
+MTK-3687,"Speakerphone fine, normal bad","Bottom mic clogged while the top carries speakerphone.",clean mic hole → test call → run mic test
+MTK-3688,"Charges only bent a certain way","The cable frayed right at the plug.",try new cable → recycle frayed → check port
+MTK-3689,"Crackles when wiggled","Loose conductors inside sparking.",stop using it → try new cable → check port
+MTK-3690,"One cable slow, others fast","The old cable lacks fast-charge wires.",use rated cable → label cables → recycle old
+MTK-3691,"Plug falls out by itself","Lint packed the port shallow.",clean lint carefully → seat plug → test charge
+MTK-3692,"Fast charge comes and goes","Lint breaks the data pins now and then.",clean lint carefully → try cable → test charge
+MTK-3693,"New cable still loose","The port is packed solid, not the cable.",clean lint carefully → inspect port → test charge
+MTK-3694,"Overnight only reached 60","An ancient 5W brick on a big battery.",use original brick → try 65w charger → charge overnight
+MTK-3695,"Loses charge while navigating","A weak car charger cannot feed maps plus screen.",use rated car charger → lower brightness → close apps
+MTK-3696,"Tablet charger crawls","An old 5W brick just trickles.",use original brick → check cable → be patient
+MTK-3697,"Stuck at 90 for an hour","Top-off trickle plus smart-charge hold.",wait a bit → disable smart charge → leave plugged
+MTK-3698,"Full but drops fast","A shown 100 is really 92.",calibrate battery → wait full → unplug fresh
+MTK-3699,"Never shows 100 anymore","Capped at 85 by battery protection.",turn off protection → wait full → leave capped for health

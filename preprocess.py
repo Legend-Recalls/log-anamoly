@@ -8,11 +8,10 @@ import numpy as np
 import logging
 import argparse
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load NLP model once at module level
+# load once, reuse everywhere (spacy takes ages to start up)
 nlp = spacy.load("en_core_web_sm", disable=["ner", "parser"])
 
 
@@ -20,51 +19,46 @@ class AdaptiveMTKProcessor:
     def __init__(self, min_code_frequency=3, min_keyword_frequency=3, 
                  code_frequency_ratio=0.001, enable_broad_patterns=False,
                  use_ml_classification=True):
-        """
-        Args:
-            min_code_frequency: Minimum absolute frequency for code patterns
-            min_keyword_frequency: Minimum frequency for keyword extraction
-            code_frequency_ratio: Minimum frequency as ratio of corpus size
-            enable_broad_patterns: Whether to enable potentially noisy broad patterns
-            use_ml_classification: Whether to use ML models for classification
+        """How picky to be when learning patterns from the data.
+
+        min_code_frequency: ignore a pattern seen fewer times than this
+        min_keyword_frequency: same idea, for keywords
+        code_frequency_ratio: same, but scales with dataset size
+        enable_broad_patterns: also try the loose patterns (noisy, off by default)
+        use_ml_classification: sort keywords with ML models (needs them installed)
         """
         self.hardware_keywords = set()
         self.technical_keywords = set()
         self.error_keywords = set()
         self.procedure_keywords = set()
         
-        # Pre-compiled regex patterns
         self.platform_regexes = []
         self.code_regexes = []
-        
-        # Configuration
+
         self.min_code_frequency = min_code_frequency
         self.min_keyword_frequency = min_keyword_frequency
         self.code_frequency_ratio = code_frequency_ratio
         self.enable_broad_patterns = enable_broad_patterns
         self.use_ml_classification = use_ml_classification
         
-        # ML models - load once and reuse
         self._classifier = None
         self._sentence_model = None
         self._initialize_ml_models()
-        
-        # Cache for processed texts
+
         self._text_cache = {}
         
     def _initialize_ml_models(self):
-        """Initialize ML models once at startup"""
+        """Load the ML models. Whatever isn't installed just stays off."""
         if not self.use_ml_classification:
             return
             
         try:
-            # Initialize transformers classifier
             from transformers import pipeline
             logger.info("Loading transformers classification model...")
             self._classifier = pipeline(
                 "zero-shot-classification", 
                 model="facebook/bart-large-mnli",
-                device=0 if self._has_cuda() else -1  # Use GPU if available
+                device=0 if self._has_cuda() else -1  # gpu if there is one, cpu otherwise
             )
             logger.info("Transformers model loaded successfully")
         except ImportError:
@@ -73,7 +67,7 @@ class AdaptiveMTKProcessor:
             logger.warning(f"Failed to load transformers: {e}")
             
         try:
-            # Initialize sentence transformer as fallback
+            # plan B in case transformers isn't around
             from sentence_transformers import SentenceTransformer
             logger.info("Loading sentence transformer model...")
             self._sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -84,7 +78,7 @@ class AdaptiveMTKProcessor:
             logger.warning(f"Failed to load sentence transformer: {e}")
     
     def _has_cuda(self):
-        """Check if CUDA is available"""
+        """Got a GPU?"""
         try:
             import torch
             return torch.cuda.is_available()
@@ -92,14 +86,13 @@ class AdaptiveMTKProcessor:
             return False
     
     def discover_patterns(self, df: pd.DataFrame):
-        """Automatically discover patterns and keywords from the data"""
+        """Read through the tickets and learn which patterns and keywords matter."""
         logger.info("Discovering patterns from data...")
         
-        # Combine all text for pattern discovery - more efficient
+        # throw all the text into one pile
         text_columns = ['title', 'description', 'repeat_steps']
         available_columns = [col for col in text_columns if col in df.columns]
         
-        # Use list comprehension for better performance
         all_text = [
             text for col in available_columns 
             for text in df[col].fillna('').astype(str).tolist()
@@ -108,7 +101,7 @@ class AdaptiveMTKProcessor:
         combined_text = ' '.join(all_text).lower()
         corpus_size = len(all_text)
         
-        # Calculate adaptive frequency thresholds
+        # bigger dataset, higher bar for keeping a pattern
         adaptive_code_freq = max(
             self.min_code_frequency, 
             int(corpus_size * self.code_frequency_ratio)
@@ -116,11 +109,10 @@ class AdaptiveMTKProcessor:
         
         logger.info(f"Using adaptive code frequency threshold: {adaptive_code_freq}")
         
-        # Discover and compile patterns in parallel if possible
         self._discover_and_compile_platform_patterns(combined_text, adaptive_code_freq)
         self._discover_and_compile_code_patterns(combined_text, adaptive_code_freq)
         
-        # Discover domain-specific keywords using TF-IDF
+        # pull out the important keywords
         self._discover_keywords(all_text, self.min_keyword_frequency)
         
         logger.info(f"Pattern discovery complete:")
@@ -132,8 +124,8 @@ class AdaptiveMTKProcessor:
         logger.info(f"  Code patterns: {len(self.code_regexes)}")
     
     def _discover_and_compile_platform_patterns(self, text: str, min_frequency: int):
-        """Discover platform/system identifiers and compile regex patterns"""
-        # More specific and targeted patterns
+        """Find platform ids (ro.xxx, mtk_xxx, versions) worth keeping."""
+        # strict ones first, these rarely misfire
         conservative_patterns = [
             r'\bro\.[a-z][a-z0-9_.]{3,}\b',     # Android properties (stricter)
             r'\bmtk[_-]?[a-z0-9]{2,}\b',        # MTK identifiers
@@ -141,9 +133,13 @@ class AdaptiveMTKProcessor:
             r'\b[a-z]+_v?[0-9]+\.[0-9]+\b',     # Version patterns
             r'\b[A-Z]{2,}[0-9]{3,}\b',          # Chip/model codes (more digits)
             r'\bbuild[_.-][a-z0-9.]+\b',        # Build identifiers
+            r'\balps\.[a-z0-9_.]+\b',           # ALPS tags like ALPS.K2.MP1
+            r'\bmt[0-9]{4}[a-z]*\b',            # Chip ids like MT6896
+            r'\bdimensity[ _-]?[0-9]+\b',       # Dimensity 9300
+            r'\bk[a-z0-9]+_64\b',               # Board names like k689v1_64
         ]
         
-        # Broader patterns (use with caution)
+        # loose ones, only if someone asks for them
         broad_patterns = [
             r'\b[a-z]{3,}[0-9]{4,}\b',          # Hardware model patterns
             r'\b[A-Z][a-z]+[0-9]{3,}\b',        # CamelCase + numbers
@@ -167,16 +163,20 @@ class AdaptiveMTKProcessor:
                 logger.warning(f"Invalid regex pattern {pattern}: {e}")
     
     def _discover_and_compile_code_patterns(self, text: str, min_frequency: int):
-        """Discover error codes and identifiers and compile regex patterns"""
+        """Same idea but for error codes (0x..., err-12, ...)."""
         conservative_patterns = [
             r'\b0x[0-9a-f]{3,}\b',              # Hex codes (at least 3 digits)
             r'\b[a-z]+[-_][0-9]{2,}\b',         # Error codes like mtk-123, wifi_04
             r'\berr(?:or)?[-_]?[0-9]+\b',       # Error patterns
             r'\b[A-Z]{2,}[0-9]{3,}\b',          # Uppercase + numbers (stricter)
             r'\bcode[-_]?[0-9]+\b',             # Explicit code patterns
+            r'\bs_ft_[a-z_]+\b',                # SP Flash Tool errors
+            r'\bke_[a-z0-9_]+\b',               # Kernel exceptions
+            r'\berr_[a-z]+_[0-9]+\b',           # ERR_DRM_3301 style codes
+            r'\bavc\b',                         # SELinux denials
         ]
         
-        # Very broad patterns (high noise risk)
+        # very loose, mostly garbage
         broad_patterns = [
             r'\b[0-9]{5,}\b',                   # Long numeric codes (very broad)
         ]
@@ -191,7 +191,7 @@ class AdaptiveMTKProcessor:
                 matches = compiled_pattern.findall(text)
                 unique_matches = set(matches)
                 
-                # Apply stricter filtering for broad numeric patterns
+                # demand more proof from the loose ones
                 threshold = min_frequency * 2 if pattern in broad_patterns else min_frequency
                 
                 if len(unique_matches) >= threshold:
@@ -201,17 +201,17 @@ class AdaptiveMTKProcessor:
                 logger.warning(f"Invalid regex pattern {pattern}: {e}")
     
     def _discover_keywords(self, texts: List[str], min_frequency: int):
-        """Use TF-IDF to discover important keywords with better preprocessing"""
+        """Pull out the keywords that actually matter, using TF-IDF."""
         if not texts:
             logger.warning("No texts provided for keyword discovery")
             return
         
-        # More sophisticated text cleaning
+        # clean the text but keep dots and dashes, codes need them
         cleaned_texts = []
         for text in texts:
             if not text or not text.strip():
                 continue
-            # Preserve technical terms and hyphens, remove other punctuation
+            # Preserve technical terms and hyphens, drop the rest
             cleaned = re.sub(r'[^\w\s.\-_]', ' ', text.lower())
             cleaned = re.sub(r'\s+', ' ', cleaned).strip()
             if cleaned:
@@ -221,14 +221,14 @@ class AdaptiveMTKProcessor:
             logger.warning("No valid texts after cleaning")
             return
         
-        # Enhanced TF-IDF with better parameters
+        # tuned for tech text: keeps dotted terms, drops boilerplate
         vectorizer = TfidfVectorizer(
-            max_features=2000,  # Increased for better coverage
-            min_df=max(2, min_frequency),  # At least 2 occurrences
-            max_df=0.8,  # Remove very common terms
-            ngram_range=(1, 3),  # Include trigrams for technical terms
+            max_features=2000,
+            min_df=max(2, min_frequency),  # ignore one-offs
+            max_df=0.8,  # drop words that show up everywhere
+            ngram_range=(1, 3),  # single words plus short phrases
             stop_words='english',
-            token_pattern=r'\b[a-zA-Z0-9][a-zA-Z0-9._\-]*\b'  # Better technical term matching
+            token_pattern=r'\b[a-zA-Z0-9][a-zA-Z0-9._\-]*\b'  # keeps ro.xxx style terms together
         )
         
         try:
@@ -236,77 +236,77 @@ class AdaptiveMTKProcessor:
             tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
             feature_names = vectorizer.get_feature_names_out()
             
-            # Get mean TF-IDF scores
+            # average score per term
             mean_scores = np.array(tfidf_matrix.mean(axis=0)).flatten()
             
-            # Sort features by importance
+            # best first
             feature_scores = list(zip(feature_names, mean_scores))
             feature_scores.sort(key=lambda x: x[1], reverse=True)
             
             logger.info(f"TF-IDF extracted {len(feature_scores)} features")
             
-            # Categorize keywords based on context and patterns
+            # sort the top 300 into buckets
             self._categorize_keywords(feature_scores[:300])  # Top 300 features
             
         except Exception as e:
             logger.error(f"TF-IDF analysis failed: {e}")
-            # Fallback to simple frequency analysis
+            # TF-IDF blew up, just count words instead
             self._simple_frequency_analysis(texts, min_frequency)
     
     def _categorize_keywords(self, feature_scores: List[Tuple[str, float]]):
-        """Categorize discovered keywords using the pre-loaded classifier"""
+        """Put each keyword in a bucket: hardware, technical, error or procedure."""
         if not feature_scores:
             return
         
-        # Try transformers first (most accurate)
+        # Easy ones go through the word lists first. Free and instant.
+        leftovers = []
+        for feature, score in feature_scores:
+            if not self._rule_place(feature, score):
+                leftovers.append((feature, score))
+
+        if not leftovers:
+            return
+
+        # Whatever the lists couldn't place goes to BART.
+        logger.info(f"{len(leftovers)} keywords left for the model...")
         if self._classifier is not None:
-            self._categorize_with_transformers(feature_scores)
-        # Fall back to sentence transformers
+            self._categorize_with_transformers(leftovers)
+        # ...or the lighter one if that's all there is.
         elif self._sentence_model is not None:
-            self._categorize_with_similarity(feature_scores)
-        # Final fallback to simple methods
+            self._categorize_with_similarity(leftovers)
         else:
-            logger.info("No ML models available, using rule-based classification")
-            self._categorize_with_rules(feature_scores)
+            logger.info("No ML models available, leftovers stay unplaced")
     
     def _categorize_with_transformers(self, feature_scores: List[Tuple[str, float]]):
-        """Categorize using pre-loaded transformers classifier"""
-        categories = [
-            "hardware component or device",
-            "technical process or method", 
-            "error failure or malfunction",
-            "procedure action or step"
-        ]
+        """Sort keywords with the zero-shot model. Slow but accurate."""
+        # short labels tested better than full sentences
+        categories = ["hardware", "technology", "error", "procedure"]
         
         logger.info("Classifying keywords using transformers model...")
         
-        # Process in batches for efficiency
+        # go in batches so it doesn't crawl
         batch_size = 50
         for i in range(0, len(feature_scores), batch_size):
             batch = feature_scores[i:i + batch_size]
             
             for feature, score in batch:
-                if score < 0.01:  # Skip very low-scoring features
+                if score < 0.01:  # not worth the model's time
                     continue
-                
-                # Skip very short or very long terms
+
+                # junk lengths
                 if len(feature) < 2 or len(feature) > 50:
                     continue
-                    
-                # Create context for better classification
-                context = f"In mobile device troubleshooting context: {feature}"
-                
+
                 try:
-                    # Classify the word/phrase
-                    result = self._classifier(context, categories, 
-                                            hypothesis_template="This term is related to {}")
-                    
-                    # Get the top prediction with confidence
+                    result = self._classifier(feature, categories,
+                                            hypothesis_template="This text is about {}.")
+
+                    # take its best guess
                     top_label = result['labels'][0]
                     confidence = result['scores'][0]
                     
-                    # Only keep high-confidence classifications
-                    if confidence > 0.5:  # Reasonable threshold
+                    # only keep it if the model is sure
+                    if confidence > 0.5:
                         self._assign_keyword_category(feature, top_label)
                         
                 except Exception as e:
@@ -314,8 +314,8 @@ class AdaptiveMTKProcessor:
                     continue
     
     def _categorize_with_similarity(self, feature_scores: List[Tuple[str, float]]):
-        """Categorize using pre-loaded sentence transformer"""
-        # Define better category prototypes
+        """Same sorting but with embedding similarity. Faster, dumber."""
+        # one reference sentence per bucket
         category_prototypes = {
             'hardware': "hardware component device part sensor camera wifi bluetooth display audio speaker microphone battery chip processor memory storage",
             'technical': "technical process method algorithm procedure timeout bandwidth allocation buffer cache optimization configuration setting parameter",
@@ -323,23 +323,22 @@ class AdaptiveMTKProcessor:
             'procedure': "procedure action step instruction reboot restart reset flash update install remove enable disable configure setup"
         }
         
-        # Get embeddings for prototypes once
+        # embed the references once
         prototype_embeddings = {}
         for category, text in category_prototypes.items():
             prototype_embeddings[category] = self._sentence_model.encode(text)
         
         logger.info("Classifying keywords using similarity matching...")
         
-        # Process in batches
         features_to_classify = [f for f, s in feature_scores if s >= 0.01 and 2 <= len(f) <= 50]
-        
+
         if features_to_classify:
-            # Batch encode all features at once
+            # embed everything in one go
             feature_embeddings = self._sentence_model.encode(features_to_classify)
             
             for feature, embedding in zip(features_to_classify, feature_embeddings):
                 try:
-                    # Calculate similarity with each prototype
+                    # nearest bucket wins
                     similarities = {}
                     for category, proto_embedding in prototype_embeddings.items():
                         similarity = np.dot(embedding, proto_embedding) / (
@@ -347,12 +346,11 @@ class AdaptiveMTKProcessor:
                         )
                         similarities[category] = similarity
                     
-                    # Get best match
                     best_category = max(similarities, key=similarities.get)
                     best_score = similarities[best_category]
-                    
-                    # Only keep reasonably confident matches
-                    if best_score > 0.25:  # Lower threshold for similarity
+
+                    # skip weak matches
+                    if best_score > 0.25:
                         category_map = {
                             'hardware': "hardware component or device",
                             'technical': "technical process or method",
@@ -365,53 +363,57 @@ class AdaptiveMTKProcessor:
                     logger.debug(f"Failed to classify '{feature}': {e}")
                     continue
     
+    def _compile_rule_res(self):
+        """Build the word-list patterns once, reuse after that."""
+        if self.__dict__.get("_rule_res") is None:
+            hardware_patterns = [
+                r'\b(camera|wifi|bluetooth|display|audio|speaker|mic|battery|sensor|chip|cpu|gpu|ram|storage|memory|npu|fingerprint|gps|gnss|drm|widevine|ufs|vibrator|haptic|gyro|barometer|sim|esim|dsp|emi|ddr|modem|touch|ois|nfc|charger|usb|rild|bootloader|antenna)\b',
+                r'\b[a-z]*cam[a-z]*\b', r'\b[a-z]*wifi[a-z]*\b', r'\b[a-z]*audio[a-z]*\b'
+            ]
+            error_patterns = [
+                r'\b(error|fail|crash|hang|freeze|timeout|fault|exception|bug|issue|problem|broken|panic|watchdog|denied|selinux|abort|downgrade|mismatch|violation|overheat|throttl|stuck)\b',
+                r'\berr\b', r'\bfail\b'
+            ]
+            procedure_patterns = [
+                r'\b(reboot|restart|reset|flash|update|install|remove|enable|disable|config|setup|start|stop|calibrate|reflash|sideload|reprovision|reenroll|relock|provision|audit|wipe|backup|restore|recalibrate)\b',
+                r'\b(step|action|procedure|instruction|guide|method|process)\b'
+            ]
+            self.__dict__["_rule_res"] = (
+                re.compile('|'.join(hardware_patterns)),
+                re.compile('|'.join(error_patterns)),
+                re.compile('|'.join(procedure_patterns)),
+            )
+        return self.__dict__["_rule_res"]
+
+    def _rule_place(self, feature: str, score: float) -> bool:
+        """Try the word lists. True if the keyword found a home."""
+        if score < 0.02:
+            return False
+        hw_regex, err_regex, proc_regex = self._compile_rule_res()
+        feature_lower = feature.lower()
+        if hw_regex.search(feature_lower):
+            self.hardware_keywords.add(feature)
+        elif err_regex.search(feature_lower):
+            self.error_keywords.add(feature)
+        elif proc_regex.search(feature_lower):
+            self.procedure_keywords.add(feature)
+        else:
+            # no list claims it, the model gets a shot at it
+            return False
+        return True
+
     def _categorize_with_rules(self, feature_scores: List[Tuple[str, float]]):
-        """Rule-based categorization as final fallback"""
-        # Define rule-based patterns
-        hardware_patterns = [
-            r'\b(camera|wifi|bluetooth|display|audio|speaker|mic|battery|sensor|chip|cpu|gpu|ram|storage|memory)\b',
-            r'\b[a-z]*cam[a-z]*\b', r'\b[a-z]*wifi[a-z]*\b', r'\b[a-z]*audio[a-z]*\b'
-        ]
-        
-        error_patterns = [
-            r'\b(error|fail|crash|hang|freeze|timeout|fault|exception|bug|issue|problem|broken)\b',
-            r'\berr\b', r'\bfail\b'
-        ]
-        
-        procedure_patterns = [
-            r'\b(reboot|restart|reset|flash|update|install|remove|enable|disable|config|setup|start|stop)\b',
-            r'\b(step|action|procedure|instruction|guide|method|process)\b'
-        ]
-        
-        # Compile patterns
-        hw_regex = re.compile('|'.join(hardware_patterns))
-        err_regex = re.compile('|'.join(error_patterns))
-        proc_regex = re.compile('|'.join(procedure_patterns))
-        
+        """No models around? Just match against word lists."""
         logger.info("Using rule-based keyword classification")
-        
+
         for feature, score in feature_scores:
-            if score < 0.02:  # Higher threshold for rule-based
-                continue
-                
-            feature_lower = feature.lower()
-            
-            if hw_regex.search(feature_lower):
-                self.hardware_keywords.add(feature)
-            elif err_regex.search(feature_lower):
-                self.error_keywords.add(feature)
-            elif proc_regex.search(feature_lower):
-                self.procedure_keywords.add(feature)
-            else:
-                # Default to technical if it has reasonable score
-                if score > 0.03:
-                    self.technical_keywords.add(feature)
+            self._rule_place(feature, score)
     
     def _assign_keyword_category(self, feature: str, category_label: str):
-        """Helper method to assign features to appropriate keyword sets"""
+        """Drop a keyword into the right bucket."""
         if "hardware" in category_label.lower():
             self.hardware_keywords.add(feature)
-        elif "technical" in category_label.lower():
+        elif "technology" in category_label.lower() or "technical" in category_label.lower():
             self.technical_keywords.add(feature)
         elif "error" in category_label.lower():
             self.error_keywords.add(feature)
@@ -419,16 +421,15 @@ class AdaptiveMTKProcessor:
             self.procedure_keywords.add(feature)
     
     def _simple_frequency_analysis(self, texts: List[str], min_frequency: int):
-        """Simple frequency analysis fallback"""
+        """Last resort: rank by raw word counts."""
         word_counts = Counter()
         
         for text in texts:
             if text and text.strip():
-                # Better tokenization
                 words = re.findall(r'\b[a-zA-Z0-9][a-zA-Z0-9._\-]*\b', text.lower())
                 word_counts.update(words)
-        
-        # Get frequent words that are likely technical terms
+
+        # frequent plus reasonable length usually means a real term
         common_words = [
             (word, count/100.0) for word, count in word_counts.items() 
             if count >= min_frequency and 2 < len(word) <= 30
@@ -436,28 +437,26 @@ class AdaptiveMTKProcessor:
         
         logger.info(f"Frequency analysis found {len(common_words)} candidate terms")
         
-        # Use rule-based classification
+        # then sort them with the word lists
         self._categorize_with_rules(common_words[:200])
     
-    # Caching methods for better performance
+    # skips work we've already done
     def _get_cached_result(self, cache_key: str) -> Optional[Dict]:
-        """Get cached processing result"""
+        """Grab a saved result if we have one."""
         return self._text_cache.get(cache_key)
     
     def _cache_result(self, cache_key: str, result: Dict):
-        """Cache processing result"""
-        # Limit cache size
+        """Save a result. Kicks out the oldest ones when full."""
         if len(self._text_cache) > 1000:
-            # Remove oldest entries
+            # make room
             oldest_keys = list(self._text_cache.keys())[:100]
             for key in oldest_keys:
                 del self._text_cache[key]
         
         self._text_cache[cache_key] = result
     
-    # Enhanced extraction methods with better performance
     def extract_platform_info(self, text: str) -> List[str]:
-        """Extract platform identifiers using compiled regex patterns"""
+        """Pull platform ids out of a piece of text."""
         if not text or not self.platform_regexes:
             return []
         
@@ -475,7 +474,7 @@ class AdaptiveMTKProcessor:
         return list(platforms)
     
     def extract_codes(self, text: str) -> List[str]:
-        """Extract codes using compiled regex patterns"""
+        """Pull error codes out of a piece of text."""
         if not text or not self.code_regexes:
             return []
         
@@ -493,33 +492,31 @@ class AdaptiveMTKProcessor:
         return list(codes)
     
     def categorize_hardware_module(self, text: str) -> str:
-        """Identify primary hardware module from discovered keywords"""
+        """Guess which hardware the ticket is about."""
         if not text or not self.hardware_keywords:
             return "unknown"
-        
+
         text_lower = text.lower()
-        
-        # Look for hardware keywords, return the first match
-        for keyword in sorted(self.hardware_keywords, key=len, reverse=True):  # Longer keywords first
+
+        # longest match first, so "camera sensor" beats "cam"
+        for keyword in sorted(self.hardware_keywords, key=len, reverse=True):
             if keyword in text_lower:
                 return keyword
         
         return "unknown"
     
     def extract_technical_keywords(self, text: str) -> Set[str]:
-        """Extract technical terms using discovered keywords"""
+        """Pick up any known tech or error terms in the text."""
         if not text:
             return set()
-        
+
         text_lower = text.lower()
         keywords = set()
-        
-        # Check technical terms
+
         for term in self.technical_keywords:
             if term in text_lower:
                 keywords.add(f"tech_{term}")
         
-        # Check error types
         for error_type in self.error_keywords:
             if error_type in text_lower:
                 keywords.add(f"error_{error_type}")
@@ -527,11 +524,11 @@ class AdaptiveMTKProcessor:
         return keywords
     
     def preprocess_title_enhanced(self, title: str) -> Dict[str, any]:
-        """Enhanced title preprocessing with caching"""
+        """Clean up a title and pull out what's interesting."""
         if not title or not title.strip():
             return self._empty_title_result()
-        
-        # Check cache first
+
+        # seen this one before?
         cache_key = f"title_{hash(title)}"
         cached = self._get_cached_result(cache_key)
         if cached:
@@ -539,20 +536,19 @@ class AdaptiveMTKProcessor:
         
         title_lower = title.lower()
         
-        # Extract structured information using discovered patterns
+        # pull out the structured bits
         platforms = self.extract_platform_info(title)
         codes = self.extract_codes(title)
         hw_module = self.categorize_hardware_module(title)
         tech_keywords = self.extract_technical_keywords(title)
 
-        # More aggressive cleaning while preserving important terms
+        # scrub punctuation, but keep the characters codes need
         clean_title = re.sub(r'[^\w\s\.\-_]', ' ', title_lower)
         clean_title = re.sub(r'\s+', ' ', clean_title).strip()
-        
-        # Better tokenization
+
         tokens = [t for t in clean_title.split() if len(t) > 1 and t.isalnum()]
-        
-        # Add extracted features as tokens
+
+        # glue the findings back in as extra tokens
         feature_tokens = []
         feature_tokens.extend([f"platform_{p}" for p in platforms])
         feature_tokens.extend([f"code_{c}" for c in codes])
@@ -571,12 +567,12 @@ class AdaptiveMTKProcessor:
             'tech_keywords': list(tech_keywords)
         }
         
-        # Cache the result
+        # save for next time
         self._cache_result(cache_key, result)
         return result
     
     def _empty_title_result(self) -> Dict[str, any]:
-        """Return empty result structure"""
+        """Blank title placeholder."""
         return {
             'text': "",
             'platforms': [],
@@ -586,7 +582,7 @@ class AdaptiveMTKProcessor:
         }
     
     def preprocess_steps_enhanced(self, steps: str) -> Dict[str, any]:
-        """Enhanced steps preprocessing with caching"""
+        """Same deal for the repeat-steps field."""
         if not steps or not steps.strip():
             return self._empty_steps_result()
         
@@ -598,22 +594,20 @@ class AdaptiveMTKProcessor:
         
         steps_lower = steps.lower().replace("→", " ").replace("->", " ")
         
-        # Extract procedure sequences using discovered keywords
+        # spot known actions like reboot or flash
         procedures = []
         for keyword in self.procedure_keywords:
             if keyword in steps_lower:
                 procedures.append(f"proc_{keyword}")
         
-        # Better cleaning and tokenization
+        # scrub and split
         clean_steps = re.sub(r'[^a-zA-Z0-9\s\-_.]', ' ', steps_lower)
         clean_steps = re.sub(r'\s+', ' ', clean_steps).strip()
-        
+
         tokens = [t for t in clean_steps.split() if len(t) > 1 and t.replace('_', '').replace('-', '').isalnum()]
-        
-        # Add procedure features
         tokens.extend(procedures)
-        
-        # Better step complexity calculation
+
+        # how involved is this procedure?
         step_separators = len(re.findall(r'[→\->\n\.•]', steps))
         sequence_length = max(step_separators, len(procedures), 1)
         
@@ -627,7 +621,7 @@ class AdaptiveMTKProcessor:
         return result
     
     def _empty_steps_result(self) -> Dict[str, any]:
-        """Return empty steps result structure"""
+        """Blank steps placeholder."""
         return {
             'text': "",
             'procedures': [],
@@ -635,7 +629,7 @@ class AdaptiveMTKProcessor:
         }
     
     def preprocess_description_enhanced(self, descriptions: List[str]) -> List[Dict[str, any]]:
-        """Enhanced description preprocessing with batch processing and caching"""
+        """Descriptions go through spacy (slow), so batch them in one pass."""
         if not descriptions:
             return []
         
@@ -643,7 +637,7 @@ class AdaptiveMTKProcessor:
         uncached_descriptions = []
         uncached_indices = []
         
-        # Check cache for each description
+        # figure out which ones still need doing
         for i, desc in enumerate(descriptions):
             if not desc or not desc.strip():
                 results.append(self._empty_description_result())
@@ -655,17 +649,17 @@ class AdaptiveMTKProcessor:
             if cached:
                 results.append(cached)
             else:
-                results.append(None)  # Placeholder
+                results.append(None)  # filled in below
                 uncached_descriptions.append(desc)
                 uncached_indices.append(i)
         
-        # Process uncached descriptions in batch
+        # run the rest through spacy together
         if uncached_descriptions:
             logger.debug(f"Processing {len(uncached_descriptions)} uncached descriptions")
             
             for doc_idx, doc in enumerate(nlp.pipe(uncached_descriptions, batch_size=50)):
                 try:
-                    # Extract meaningful tokens more efficiently
+                    # keep real words, lemmatized
                     tokens = []
                     for token in doc:
                         if (not token.is_stop and 
@@ -673,7 +667,7 @@ class AdaptiveMTKProcessor:
                             token.text.replace('_', '').replace('-', '').isalnum()):
                             tokens.append(token.lemma_.lower())
                     
-                    # Extract features using discovered patterns
+                    # same structured bits as titles
                     desc_text = uncached_descriptions[doc_idx]
                     platforms = self.extract_platform_info(desc_text)
                     codes = self.extract_codes(desc_text)
@@ -690,8 +684,7 @@ class AdaptiveMTKProcessor:
                     
                     tokens.extend(feature_tokens)
                     tokens.extend(list(tech_keywords))
-                    
-                    # Create result
+
                     result = {
                         'text': " ".join(sorted(set(tokens))),
                         'platforms': platforms,
@@ -701,7 +694,7 @@ class AdaptiveMTKProcessor:
                         'token_count': len(set(tokens))
                     }
                     
-                    # Cache and store result
+                    # save it and slot it into place
                     original_index = uncached_indices[doc_idx]
                     cache_key = f"desc_{hash(uncached_descriptions[doc_idx])}"
                     self._cache_result(cache_key, result)
@@ -714,7 +707,7 @@ class AdaptiveMTKProcessor:
         return results
     
     def _empty_description_result(self) -> Dict[str, any]:
-        """Return empty description result structure"""
+        """Blank description placeholder."""
         return {
             'text': "",
             'platforms': [],
@@ -725,7 +718,7 @@ class AdaptiveMTKProcessor:
         }
     
     def get_stats(self) -> Dict[str, any]:
-        """Get processor statistics"""
+        """Quick summary of what got learned."""
         return {
             'hardware_keywords': len(self.hardware_keywords),
             'technical_keywords': len(self.technical_keywords),
@@ -741,13 +734,7 @@ class AdaptiveMTKProcessor:
         }
     
     def process_mediatek_tickets(self, csv_path: str) -> pd.DataFrame:
-        """
-        Main end-to-end pipeline:
-        1) Read CSV
-        2) Preprocess title / steps / description
-        3) Create combined feature text
-        4) Extract summary columns
-        """
+        """Run the whole thing: read the csv, clean everything, build search text."""
         logger.info(f"Loading data from {csv_path}…")
         df = pd.read_csv(csv_path)
 
@@ -764,7 +751,7 @@ class AdaptiveMTKProcessor:
         logger.info("Creating enhanced_text field…")
         df['enhanced_text'] = df.apply(self.create_enhanced_features, axis=1)
 
-        # Summary columns for quick analysis
+        # handy columns for poking at the data
         df['hardware_module'] = df['title_processed'].map(lambda x: x['hw_module'])
         df['platform_count']   = df['title_processed'].map(lambda x: len(x['platforms']))
         df['procedure_count']  = df['steps_processed'].map(lambda x: len(x['procedures']))
@@ -774,7 +761,7 @@ class AdaptiveMTKProcessor:
         return df
 
     def create_enhanced_features(self, row: Dict[str, any]) -> str:
-        """Build the same searchable text for batch and newly added tickets."""
+        """One searchable blob per ticket. Same builder for old and new tickets."""
         title = row['title_processed']
         steps = row['steps_processed']
         desc = row['desc_processed']
@@ -794,14 +781,10 @@ class AdaptiveMTKProcessor:
             parts.append(f"[SEQ_LEN] {sequence_length}")
         return " ".join(parts)
 
-
-    
     def clear_cache(self):
-        """Clear the processing cache"""
+        """Empty the cache."""
         self._text_cache.clear()
         logger.info("Processing cache cleared")
-
-
 
 
 if __name__ == "__main__":

@@ -22,6 +22,17 @@ META_FILE = "models/meta_info.json"
 # Instantiate a single processor
 processor = AdaptiveMTKProcessor()
 
+def clean_query(query):
+    # Same cleaning tickets get, so the query meets them in the same format.
+    title_proc = processor.preprocess_title_enhanced(query)
+    steps_proc = processor.preprocess_steps_enhanced(query)
+    desc_proc = processor.preprocess_description_enhanced([query])[0]
+    return processor.create_enhanced_features({
+        "title_processed": title_proc,
+        "steps_processed": steps_proc,
+        "desc_processed": desc_proc,
+    })
+
 @st.cache_resource
 def load_bi_encoder():
     return SentenceTransformer("all-mpnet-base-v2")
@@ -44,10 +55,12 @@ def search_with_cross_encoder(query, bi_encoder, cross_encoder, df, index, hnsw_
     if candidate_count == 0:
         return pd.DataFrame()
     index.set_ef(max(50, candidate_count))
-    q_emb = bi_encoder.encode([query], normalize_embeddings=True)
+    search_text = clean_query(query)
+    q_emb = bi_encoder.encode([search_text], normalize_embeddings=True)
     labels, _ = index.knn_query(q_emb, k=candidate_count)
     candidate_idxs = labels[0]
     candidate_texts = df.iloc[candidate_idxs]["enhanced_text"].tolist()
+    # Reranker keeps the raw query, it reads natural language better.
     cross_inputs = [[query, txt] for txt in candidate_texts]
     cross_scores = cross_encoder.predict(cross_inputs)
     top_n = np.argsort(cross_scores)[::-1][:top_k]

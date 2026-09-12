@@ -1,0 +1,67 @@
+name: build-index
+
+# Push code -> this builds the index -> files land in a Release. Nothing to run locally.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mediatek_tickets.csv"
+      - "preprocess.py"
+      - "transform.py"
+      - "requirements.txt"
+      - "app.py"
+      - "main.py"
+  workflow_dispatch:
+
+concurrency:
+  group: build-index
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Cache model downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download language data
+        run: python -m spacy download en_core_web_sm
+
+      - name: Preprocess tickets
+        run: python preprocess.py --input mediatek_tickets.csv --output enhanced_mediatek_tickets.csv
+
+      - name: Build embeddings and index
+        run: python transform.py
+
+      - name: Show what got built
+        run: ls -la models/ enhanced_mediatek_tickets.csv
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: index-${{ github.run_number }}
+          name: Rebuilt index #${{ github.run_number }}
+          body: Built from ${{ github.sha }}. Download the files into your project folder.
+          files: |
+            models/enhanced_ticket_hnsw_index.bin
+            models/enhanced_ticket_embeddings.npy
+            models/enhanced_tickets_df.pkl
+            models/index_id_map.pkl
+            models/meta_info.json
+            enhanced_mediatek_tickets.csv
