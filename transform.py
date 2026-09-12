@@ -91,4 +91,4 @@ meta = {
 with open(META_FILE, "w") as f:
     json.dump(meta, f, indent=2)
 
-print(f"\n✅ Index built with {num_elements} tickets (+{padding} padding)")
+print(f"\n✅ Index built with {num_elements} tickets (+{spare_capacity} spare)")
